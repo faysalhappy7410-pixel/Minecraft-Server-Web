@@ -31,6 +31,7 @@ import {
 } from '../types/cms';
 import { ResilientImage } from '../components/ResilientImage';
 import { MinecraftAvatar } from '../components/MinecraftAvatar';
+import { CommunityEventsCalendar } from '../components/CommunityEventsCalendar';
 
 const LEADERBOARD_CATEGORIES: LeaderboardCategory[] = [
   'PvP Master',
@@ -667,19 +668,24 @@ export const CommunityPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. Community Events & Fair-Play Rules Showcase */}
+      {/* 4. Interactive Community Events Calendar & Fair-Play Rules Showcase */}
       <section aria-labelledby="events-heading" className="space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <p className="text-xs font-mono uppercase tracking-widest text-emerald-400">
-              03. Tournaments, Events &amp; Code of Honor
+              03. Interactive Event Schedule &amp; Code of Honor
             </p>
             <h2
               id="events-heading"
-              className="font-display text-2xl sm:text-3xl font-bold text-white mt-1"
+              className="font-display text-2xl sm:text-3xl font-bold text-white mt-1 flex items-center gap-2.5"
             >
-              Events &amp; Community Rules Showcase
+              <Calendar className="w-7 h-7 text-emerald-400 shrink-0" />
+              <span>Community Events Calendar</span>
             </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              Explore upcoming server tournaments, build battles, and seasonal events by date.
+              Synced live via Firestore.
+            </p>
           </div>
           <Link
             to="/information"
@@ -689,135 +695,44 @@ export const CommunityPage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left 8 Cols: Upcoming & Past Events */}
-          <div className="lg:col-span-8 space-y-6">
-            <h3 className="font-display text-lg font-bold text-emerald-300 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              <span>Upcoming Community Events</span>
-            </h3>
+        {/* Interactive Calendar + Real-Time Firestore Event Schedule & Admin Publisher */}
+        <CommunityEventsCalendar />
 
-            {upcomingEvents.length === 0 ? (
-              <div className="rounded-xl bg-slate-900/60 border border-slate-800 p-6 text-sm text-slate-400">
-                No upcoming events scheduled right now. Check our Discord for announcements!
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {upcomingEvents.map((evt) => (
-                  <div
-                    key={evt.id}
-                    className="rounded-2xl bg-slate-900/85 border border-slate-800/90 hover:border-emerald-500/40 overflow-hidden flex flex-col justify-between transition-colors"
-                  >
-                    <div>
-                      {evt.imageUrl && (
-                        <div className="aspect-video relative overflow-hidden bg-slate-950">
-                          <ResilientImage
-                            src={evt.imageUrl}
-                            alt={evt.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="p-6 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-emerald-300">
-                          <span>{evt.eventDate}</span>
-                          <span>·</span>
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {evt.eventTime}
-                          </span>
-                        </div>
-                        <h4 className="font-display text-xl font-bold text-white">{evt.title}</h4>
-                        <p className="text-sm text-slate-300 leading-relaxed">{evt.description}</p>
-                        <div className="pt-2 text-xs text-amber-300 flex items-center gap-2 font-semibold">
-                          <Trophy className="w-4 h-4 shrink-0" />
-                          <span>Prize: {evt.prize}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {evt.discordLink && (
-                      <div className="px-6 py-4 border-t border-slate-800/80 bg-slate-950/40 flex items-center justify-between">
-                        <span className="text-xs text-slate-400">Register on Discord</span>
-                        <a
-                          href={evt.discordLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
-                        >
-                          <span>Event Channel</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {pastEvents.length > 0 && (
-              <div className="space-y-4 pt-2">
-                <h3 className="font-display text-base font-bold text-slate-200 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-cyan-400" />
-                  <span>Past Event Winners &amp; Recaps</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pastEvents.map((evt) => (
-                    <div
-                      key={evt.id}
-                      className="rounded-xl bg-slate-900/60 border border-slate-800/80 p-5 space-y-2"
-                    >
-                      <div className="text-xs font-mono text-slate-400">
-                        Completed · {evt.eventDate}
-                      </div>
-                      <h4 className="font-display text-base font-bold text-white">{evt.title}</h4>
-                      {evt.winnerSummary && (
-                        <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono text-emerald-300">
-                          {evt.winnerSummary}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Core Community Pillars & Past Winner Highlights */}
+        <div className="rounded-2xl bg-slate-900/85 border border-slate-800/90 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
+                <Shield className="w-4 h-4 text-emerald-400" />
+                <span>Core Community Pillars &amp; Tournament Fair-Play</span>
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Every tournament and survival season on PRO PLAYERS is governed by strict fair-play
+                standards ({upcomingEvents.length} upcoming · {pastEvents.length} completed recaps):
+              </p>
+            </div>
+            <Link
+              to="/information"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-colors shrink-0"
+            >
+              <Award className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Read All Rules &amp; Guidelines</span>
+            </Link>
           </div>
 
-          {/* Right 4 Cols: Community Rules & Fair-Play Showcase Card */}
-          <div className="lg:col-span-4 space-y-4">
-            <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
-              <Shield className="w-4 h-4 text-emerald-400" />
-              <span>Core Community Pillars</span>
-            </h3>
-
-            <div className="rounded-2xl bg-slate-900/85 border border-slate-800/90 p-6 space-y-4">
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Every tournament and survival season on PRO PLAYERS is governed by strict fair-play
-                standards:
-              </p>
-
-              <div className="space-y-3">
-                {highlightedRules.map((rule, idx) => (
-                  <div
-                    key={rule.id}
-                    className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-1"
-                  >
-                    <div className="text-[11px] font-mono text-emerald-400">
-                      0{idx + 1} · {rule.category}
-                    </div>
-                    <div className="font-display text-sm font-bold text-white">{rule.title}</div>
-                    <p className="text-xs text-slate-400 leading-relaxed">{rule.description}</p>
-                  </div>
-                ))}
-              </div>
-
-              <Link
-                to="/information"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {highlightedRules.map((rule, idx) => (
+              <div
+                key={rule.id}
+                className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-1.5"
               >
-                <span>Read All Rules &amp; Guidelines</span>
-              </Link>
-            </div>
+                <div className="text-[11px] font-mono text-emerald-400">
+                  0{idx + 1} · {rule.category}
+                </div>
+                <div className="font-display text-sm font-bold text-white">{rule.title}</div>
+                <p className="text-xs text-slate-400 leading-relaxed">{rule.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
