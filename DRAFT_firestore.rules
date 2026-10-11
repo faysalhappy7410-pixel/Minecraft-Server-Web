@@ -1,0 +1,554 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 0. GLOBAL SAFETY NET (Default-Deny Catch-All)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // 1. GLOBAL PRIMITIVES & RBAC HELPERS
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Admin check: Must either have role == 'admin' in trusted /users/{uid} document
+    // (which cannot be self-assigned by users) OR be the verified project owner email.
+    function isAdmin() {
+      return isSignedIn() && (
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        ) ||
+        (
+          request.auth.token.email == 'faysalhappy7410@gmail.com' &&
+          request.auth.token.email_verified == true
+        )
+      );
+    }
+
+    function isValidTimestampString(val) {
+      return val is string && val.size() >= 1 && val.size() <= 60;
+    }
+
+    // =========================================================================
+    // 2. ENTITY VALIDATION BLUEPRINTS (Strict Keys, Types & Boundaries)
+    // =========================================================================
+
+    function isValidUser(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'email', 'firstName', 'minecraftUsername', 'discordUsername',
+        'bio', 'instagramUrl', 'facebookUrl', 'role', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'email', 'firstName', 'minecraftUsername', 'discordUsername',
+        'bio', 'instagramUrl', 'facebookUrl', 'avatarUrl', 'role', 'createdAt', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == userId && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+      data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+      data.firstName is string && data.firstName.size() >= 1 && data.firstName.size() <= 60 &&
+      data.minecraftUsername is string && data.minecraftUsername.size() >= 3 && data.minecraftUsername.size() <= 16 &&
+      data.minecraftUsername.matches('^[a-zA-Z0-9_]{3,16}$') &&
+      data.discordUsername is string && data.discordUsername.size() <= 60 &&
+      data.bio is string && data.bio.size() <= 500 &&
+      data.instagramUrl is string && data.instagramUrl.size() <= 300 &&
+      data.facebookUrl is string && data.facebookUrl.size() <= 300 &&
+      (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500)) &&
+      data.role is string && (data.role == 'user' || data.role == 'admin') &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll([
+        'siteName', 'tagline', 'description', 'officialLogoUrl', 'themeReferenceUrl',
+        'backgroundImageUrl', 'primaryColor', 'secondaryColor', 'javaHost', 'javaPort',
+        'bedrockHost', 'bedrockPort', 'minecraftVersion', 'discordUrl', 'youtubeUrl',
+        'instagramUrl', 'facebookUrl', 'published', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'siteName', 'tagline', 'description', 'officialLogoUrl', 'themeReferenceUrl',
+        'backgroundImageUrl', 'primaryColor', 'secondaryColor', 'javaHost', 'javaPort',
+        'bedrockHost', 'bedrockPort', 'minecraftVersion', 'discordUrl', 'youtubeUrl',
+        'instagramUrl', 'facebookUrl', 'published', 'updatedAt'
+      ]) &&
+      data.siteName is string && data.siteName.size() >= 1 && data.siteName.size() <= 60 &&
+      data.tagline is string && data.tagline.size() >= 1 && data.tagline.size() <= 160 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 1000 &&
+      data.officialLogoUrl is string && data.officialLogoUrl.size() >= 1 && data.officialLogoUrl.size() <= 500 &&
+      data.themeReferenceUrl is string && data.themeReferenceUrl.size() >= 1 && data.themeReferenceUrl.size() <= 500 &&
+      data.backgroundImageUrl is string && data.backgroundImageUrl.size() >= 1 && data.backgroundImageUrl.size() <= 500 &&
+      data.primaryColor is string && data.primaryColor.size() >= 4 && data.primaryColor.size() <= 20 &&
+      data.secondaryColor is string && data.secondaryColor.size() >= 4 && data.secondaryColor.size() <= 20 &&
+      data.javaHost is string && data.javaHost.size() >= 1 && data.javaHost.size() <= 120 &&
+      data.javaPort is number && data.javaPort >= 1 && data.javaPort <= 65535 &&
+      data.bedrockHost is string && data.bedrockHost.size() >= 1 && data.bedrockHost.size() <= 120 &&
+      data.bedrockPort is number && data.bedrockPort >= 1 && data.bedrockPort <= 65535 &&
+      data.minecraftVersion is string && data.minecraftVersion.size() >= 1 && data.minecraftVersion.size() <= 60 &&
+      data.discordUrl is string && data.discordUrl.size() <= 300 &&
+      data.youtubeUrl is string && data.youtubeUrl.size() <= 300 &&
+      data.instagramUrl is string && data.instagramUrl.size() <= 300 &&
+      data.facebookUrl is string && data.facebookUrl.size() <= 300 &&
+      data.published is bool &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidStory(data) {
+      return data.keys().hasAll([
+        'title', 'dateLabel', 'description', 'milestoneType', 'imageUrl',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'dateLabel', 'description', 'milestoneType', 'imageUrl',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+      data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 60 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 1000 &&
+      data.milestoneType is string && data.milestoneType.size() >= 1 && data.milestoneType.size() <= 60 &&
+      data.imageUrl is string && data.imageUrl.size() <= 500 &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidRule(data) {
+      return data.keys().hasAll([
+        'title', 'description', 'category', 'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'description', 'category', 'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 800 &&
+      data.category is string && (
+        data.category == 'General' ||
+        data.category == 'PvP' ||
+        data.category == 'Building' ||
+        data.category == 'Chat' ||
+        data.category == 'Prohibited Activities'
+      ) &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidJoinStep(data) {
+      return data.keys().hasAll([
+        'edition', 'stepNumber', 'title', 'description', 'highlightText',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'edition', 'stepNumber', 'title', 'description', 'highlightText',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.edition is string && (data.edition == 'Java' || data.edition == 'Bedrock') &&
+      data.stepNumber is number && data.stepNumber >= 1 && data.stepNumber <= 50 &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+      data.highlightText is string && data.highlightText.size() <= 160 &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidFaq(data) {
+      return data.keys().hasAll([
+        'question', 'answer', 'category', 'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'question', 'answer', 'category', 'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.question is string && data.question.size() >= 1 && data.question.size() <= 200 &&
+      data.answer is string && data.answer.size() >= 1 && data.answer.size() <= 1500 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidFeature(data) {
+      return data.keys().hasAll([
+        'title', 'description', 'category', 'iconName', 'showOnHome',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'description', 'category', 'iconName', 'showOnHome',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+      data.iconName is string && data.iconName.size() >= 1 && data.iconName.size() <= 40 &&
+      data.showOnHome is bool &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidGameMode(data) {
+      return data.keys().hasAll([
+        'name', 'description', 'accessCommand', 'iconName', 'imageUrl',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'name', 'description', 'accessCommand', 'iconName', 'imageUrl',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+      data.accessCommand is string && data.accessCommand.size() >= 1 && data.accessCommand.size() <= 80 &&
+      data.iconName is string && data.iconName.size() >= 1 && data.iconName.size() <= 40 &&
+      data.imageUrl is string && data.imageUrl.size() <= 500 &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll([
+        'category', 'rank', 'minecraftUsername', 'statLabel', 'statValue',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'category', 'rank', 'minecraftUsername', 'statLabel', 'statValue',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.category is string && (
+        data.category == 'PvP Master' ||
+        data.category == 'Master Builder' ||
+        data.category == 'Minigame Champion' ||
+        data.category == 'Play Time Legend' ||
+        data.category == 'Community Helper' ||
+        data.category == 'Event Winner'
+      ) &&
+      data.rank is number && data.rank >= 1 && data.rank <= 100 &&
+      data.minecraftUsername is string && data.minecraftUsername.size() >= 3 && data.minecraftUsername.size() <= 16 &&
+      data.statLabel is string && data.statLabel.size() >= 1 && data.statLabel.size() <= 60 &&
+      data.statValue is string && data.statValue.size() >= 1 && data.statValue.size() <= 60 &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidStaffMember(data) {
+      return data.keys().hasAll([
+        'minecraftUsername', 'roleTitle', 'bio', 'discordHandle', 'avatarUrl',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'minecraftUsername', 'roleTitle', 'bio', 'discordHandle', 'avatarUrl',
+        'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.minecraftUsername is string && data.minecraftUsername.size() >= 3 && data.minecraftUsername.size() <= 16 &&
+      data.roleTitle is string && (
+        data.roleTitle == 'Owner' ||
+        data.roleTitle == 'Admin' ||
+        data.roleTitle == 'Moderator' ||
+        data.roleTitle == 'Builder' ||
+        data.roleTitle == 'Helper'
+      ) &&
+      data.bio is string && data.bio.size() >= 1 && data.bio.size() <= 400 &&
+      data.discordHandle is string && data.discordHandle.size() <= 60 &&
+      data.avatarUrl is string && data.avatarUrl.size() <= 500 &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll([
+        'title', 'category', 'builderCredit', 'description', 'completionDate',
+        'imageUrl', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'category', 'builderCredit', 'description', 'completionDate',
+        'imageUrl', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+      data.builderCredit is string && data.builderCredit.size() >= 1 && data.builderCredit.size() <= 80 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 800 &&
+      data.completionDate is string && data.completionDate.size() >= 1 && data.completionDate.size() <= 40 &&
+      data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 500 &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidTestimonial(data) {
+      return data.keys().hasAll([
+        'minecraftUsername', 'quote', 'rating', 'playingSince',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'minecraftUsername', 'quote', 'rating', 'playingSince',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.minecraftUsername is string && data.minecraftUsername.size() >= 3 && data.minecraftUsername.size() <= 16 &&
+      data.quote is string && data.quote.size() >= 1 && data.quote.size() <= 600 &&
+      data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+      data.playingSince is string && data.playingSince.size() >= 1 && data.playingSince.size() <= 40 &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidCommunityEvent(data) {
+      return data.keys().hasAll([
+        'title', 'eventDate', 'eventTime', 'description', 'prize',
+        'discordLink', 'isPast', 'winnerSummary', 'imageUrl',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'eventDate', 'eventTime', 'description', 'prize',
+        'discordLink', 'isPast', 'winnerSummary', 'imageUrl',
+        'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+      data.eventDate is string && data.eventDate.size() >= 1 && data.eventDate.size() <= 40 &&
+      data.eventTime is string && data.eventTime.size() >= 1 && data.eventTime.size() <= 40 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 1000 &&
+      data.prize is string && data.prize.size() >= 1 && data.prize.size() <= 160 &&
+      data.discordLink is string && data.discordLink.size() <= 300 &&
+      data.isPast is bool &&
+      data.winnerSummary is string && data.winnerSummary.size() <= 400 &&
+      data.imageUrl is string && data.imageUrl.size() <= 500 &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidNewsArticle(data) {
+      return data.keys().hasAll([
+        'title', 'publishDate', 'authorName', 'category', 'summary',
+        'content', 'imageUrl', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'publishDate', 'authorName', 'category', 'summary',
+        'content', 'imageUrl', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+      data.publishDate is string && data.publishDate.size() >= 1 && data.publishDate.size() <= 40 &&
+      data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+      data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 400 &&
+      data.content is string && data.content.size() >= 1 && data.content.size() <= 5000 &&
+      data.imageUrl is string && data.imageUrl.size() <= 500 &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    function isValidSocialLink(data) {
+      return data.keys().hasAll([
+        'platform', 'label', 'url', 'description', 'colorHex',
+        'isPrimary', 'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'platform', 'label', 'url', 'description', 'colorHex',
+        'isPrimary', 'order', 'published', 'createdAt', 'updatedAt'
+      ]) &&
+      data.platform is string && data.platform.size() >= 1 && data.platform.size() <= 40 &&
+      data.label is string && data.label.size() >= 1 && data.label.size() <= 80 &&
+      data.url is string && data.url.size() >= 1 && data.url.size() <= 300 &&
+      data.description is string && data.description.size() >= 1 && data.description.size() <= 300 &&
+      data.colorHex is string && data.colorHex.size() >= 4 && data.colorHex.size() <= 20 &&
+      data.isPrimary is bool &&
+      data.order is number &&
+      data.published is bool &&
+      isValidTimestampString(data.createdAt) &&
+      isValidTimestampString(data.updatedAt);
+    }
+
+    // =========================================================================
+    // 3. COLLECTION MATCH RULES
+    // =========================================================================
+
+    // USERS COLLECTION (Contains private email and RBAC role)
+    match /users/{userId} {
+      // Only the profile owner or an admin can read a user document (protects private email).
+      allow get: if isSignedIn() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      // List queries must either match the requester's own UID or be executed by an admin.
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+
+      // Registration: Users can only create their own document and MUST set role == 'user'
+      // (unless they are already a verified admin).
+      allow create: if isSignedIn() && isValidId(userId) && isValidUser(incoming(), userId) && (
+        (isOwner(userId) && incoming().role == 'user') || isAdmin()
+      );
+
+      // Profile Update: Action-based update pattern.
+      // Regular owners can ONLY update profile fields and CANNOT modify role, uid, email, or createdAt.
+      allow update: if isSignedIn() && isValidId(userId) && isValidUser(incoming(), userId) && (
+        (
+          isOwner(userId) &&
+          incoming().uid == existing().uid &&
+          incoming().email == existing().email &&
+          incoming().role == existing().role &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'firstName', 'minecraftUsername', 'discordUsername',
+            'bio', 'instagramUrl', 'facebookUrl', 'avatarUrl', 'updatedAt'
+          ])
+        ) ||
+        isAdmin()
+      );
+
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // SITE SETTINGS COLLECTION
+    match /site_settings/{settingId} {
+      allow get: if isValidId(settingId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(settingId) && isValidSiteSettings(incoming());
+      allow update: if isAdmin() && isValidId(settingId) && isValidSiteSettings(incoming());
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+
+    // STORIES COLLECTION
+    match /stories/{storyId} {
+      allow get: if isValidId(storyId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(storyId) && isValidStory(incoming());
+      allow update: if isAdmin() && isValidId(storyId) && isValidStory(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(storyId);
+    }
+
+    // RULES COLLECTION
+    match /rules/{ruleId} {
+      allow get: if isValidId(ruleId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(ruleId) && isValidRule(incoming());
+      allow update: if isAdmin() && isValidId(ruleId) && isValidRule(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(ruleId);
+    }
+
+    // JOIN STEPS COLLECTION
+    match /join_steps/{stepId} {
+      allow get: if isValidId(stepId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(stepId) && isValidJoinStep(incoming());
+      allow update: if isAdmin() && isValidId(stepId) && isValidJoinStep(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(stepId);
+    }
+
+    // FAQS COLLECTION
+    match /faqs/{faqId} {
+      allow get: if isValidId(faqId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(faqId) && isValidFaq(incoming());
+      allow update: if isAdmin() && isValidId(faqId) && isValidFaq(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(faqId);
+    }
+
+    // FEATURES COLLECTION
+    match /features/{featureId} {
+      allow get: if isValidId(featureId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(featureId) && isValidFeature(incoming());
+      allow update: if isAdmin() && isValidId(featureId) && isValidFeature(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(featureId);
+    }
+
+    // GAME MODES COLLECTION
+    match /game_modes/{modeId} {
+      allow get: if isValidId(modeId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(modeId) && isValidGameMode(incoming());
+      allow update: if isAdmin() && isValidId(modeId) && isValidGameMode(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(modeId);
+    }
+
+    // LEADERBOARDS COLLECTION
+    match /leaderboards/{entryId} {
+      allow get: if isValidId(entryId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(entryId) && isValidLeaderboardEntry(incoming());
+      allow update: if isAdmin() && isValidId(entryId) && isValidLeaderboardEntry(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(entryId);
+    }
+
+    // STAFF COLLECTION
+    match /staff/{staffId} {
+      allow get: if isValidId(staffId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(staffId) && isValidStaffMember(incoming());
+      allow update: if isAdmin() && isValidId(staffId) && isValidStaffMember(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(staffId);
+    }
+
+    // GALLERY COLLECTION
+    match /gallery/{itemId} {
+      allow get: if isValidId(itemId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(itemId) && isValidGalleryItem(incoming());
+      allow update: if isAdmin() && isValidId(itemId) && isValidGalleryItem(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(itemId);
+    }
+
+    // TESTIMONIALS COLLECTION
+    match /testimonials/{testimonialId} {
+      allow get: if isValidId(testimonialId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(testimonialId) && isValidTestimonial(incoming());
+      allow update: if isAdmin() && isValidId(testimonialId) && isValidTestimonial(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(testimonialId);
+    }
+
+    // EVENTS COLLECTION
+    match /events/{eventId} {
+      allow get: if isValidId(eventId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(eventId) && isValidCommunityEvent(incoming());
+      allow update: if isAdmin() && isValidId(eventId) && isValidCommunityEvent(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(eventId);
+    }
+
+    // NEWS COLLECTION
+    match /news/{articleId} {
+      allow get: if isValidId(articleId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(articleId) && isValidNewsArticle(incoming());
+      allow update: if isAdmin() && isValidId(articleId) && isValidNewsArticle(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(articleId);
+    }
+
+    // SOCIAL LINKS COLLECTION
+    match /social_links/{linkId} {
+      allow get: if isValidId(linkId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidId(linkId) && isValidSocialLink(incoming());
+      allow update: if isAdmin() && isValidId(linkId) && isValidSocialLink(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(linkId);
+    }
+  }
+}

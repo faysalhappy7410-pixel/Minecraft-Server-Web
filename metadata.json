@@ -1,0 +1,6 @@
+{
+  "name": "PRO PLAYERS",
+  "description": "Official Minecraft Server Community Hub for PRO PLAYERS — Live Java & Bedrock Server Status, Server Rules, Build Gallery, Leaderboards, Events, and News.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

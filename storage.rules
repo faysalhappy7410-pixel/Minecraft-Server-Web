@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// ============================================================================
+// PRO PLAYERS — Firebase Storage Security Rules
+// ============================================================================
+// Deployment:
+//   firebase deploy --only storage
+// ============================================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin role check against Cloud Firestore users/{uid} document
+    function isAdmin() {
+      return isSignedIn() && (
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (request.auth.token.email == 'faysalhappy7410@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidImageUpload() {
+      return request.resource != null &&
+        request.resource.size <= 5 * 1024 * 1024 && // Max 5 MB
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // 1. Public CMS Assets (Logo, Theme Reference, Gallery, News, Events, Staff)
+    // Public visitors can read CMS images intentionally published on the site.
+    // Only verified admins can upload, overwrite, or delete CMS assets.
+    match /cms/{category}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Optional User Avatar Uploads (Restricted strictly to the owner's UID path)
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId && isValidImageUpload();
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // 3. Default Deny Catch-All
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

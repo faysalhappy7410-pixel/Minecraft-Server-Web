@@ -1,0 +1,369 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered PRO PLAYERS community member profile and access role.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "firstName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "minecraftUsername": { "type": "string", "minLength": 3, "maxLength": 16, "pattern": "^[a-zA-Z0-9_]{3,16}$" },
+        "discordUsername": { "type": "string", "maxLength": 60 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "instagramUrl": { "type": "string", "maxLength": 300 },
+        "facebookUrl": { "type": "string", "maxLength": 300 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["uid", "email", "firstName", "minecraftUsername", "role", "createdAt", "updatedAt"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global site configuration, branding assets, theme colors, and server hosts/ports.",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "tagline": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "officialLogoUrl": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "themeReferenceUrl": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "backgroundImageUrl": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "primaryColor": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "secondaryColor": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "javaHost": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "javaPort": { "type": "number" },
+        "bedrockHost": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "bedrockPort": { "type": "number" },
+        "minecraftVersion": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "discordUrl": { "type": "string", "maxLength": 300 },
+        "youtubeUrl": { "type": "string", "maxLength": 300 },
+        "instagramUrl": { "type": "string", "maxLength": 300 },
+        "facebookUrl": { "type": "string", "maxLength": 300 },
+        "published": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": [
+        "siteName",
+        "tagline",
+        "description",
+        "officialLogoUrl",
+        "themeReferenceUrl",
+        "backgroundImageUrl",
+        "primaryColor",
+        "secondaryColor",
+        "javaHost",
+        "javaPort",
+        "bedrockHost",
+        "bedrockPort",
+        "minecraftVersion",
+        "published",
+        "updatedAt"
+      ]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "Server story timeline milestone.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "dateLabel": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "milestoneType": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["title", "dateLabel", "description", "milestoneType", "order", "published", "createdAt", "updatedAt"]
+    },
+    "Rule": {
+      "title": "Rule",
+      "description": "Server rule entry grouped by category.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "category": { "type": "string", "enum": ["General", "PvP", "Building", "Chat", "Prohibited Activities"] },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["title", "description", "category", "order", "published", "createdAt", "updatedAt"]
+    },
+    "ServerCommand": {
+      "title": "ServerCommand",
+      "description": "In-game Minecraft command entry with category, description, and active status.",
+      "type": "object",
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "category": { "type": "string", "enum": ["Teleport", "Survival & Land", "Economy", "Combat & Social", "General"] },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["command", "description", "category", "order", "published", "createdAt", "updatedAt"]
+    },
+    "JoinStep": {
+      "title": "JoinStep",
+      "description": "Step-by-step connection instruction for Java or Bedrock edition.",
+      "type": "object",
+      "properties": {
+        "edition": { "type": "string", "enum": ["Java", "Bedrock"] },
+        "stepNumber": { "type": "number" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "highlightText": { "type": "string", "maxLength": 160 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["edition", "stepNumber", "title", "description", "published", "createdAt", "updatedAt"]
+    },
+    "Faq": {
+      "title": "Faq",
+      "description": "Frequently asked question and answer.",
+      "type": "object",
+      "properties": {
+        "question": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "answer": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["question", "answer", "category", "order", "published", "createdAt", "updatedAt"]
+    },
+    "Feature": {
+      "title": "Feature",
+      "description": "Server feature card used on Home and Information pages.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "iconName": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "showOnHome": { "type": "boolean" },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["title", "description", "category", "iconName", "showOnHome", "order", "published", "createdAt", "updatedAt"]
+    },
+    "GameMode": {
+      "title": "GameMode",
+      "description": "Playable server game mode with command and visual icon/image.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "accessCommand": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "iconName": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["name", "description", "accessCommand", "iconName", "order", "published", "createdAt", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Admin-curated leaderboard entry for a specific competitive category.",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["PvP Master", "Master Builder", "Minigame Champion", "Play Time Legend", "Community Helper", "Event Winner"]
+        },
+        "rank": { "type": "number" },
+        "minecraftUsername": { "type": "string", "minLength": 3, "maxLength": 16 },
+        "statLabel": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "statValue": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["category", "rank", "minecraftUsername", "statLabel", "statValue", "published", "createdAt", "updatedAt"]
+    },
+    "StaffMember": {
+      "title": "StaffMember",
+      "description": "PRO PLAYERS team and staff roster member.",
+      "type": "object",
+      "properties": {
+        "minecraftUsername": { "type": "string", "minLength": 3, "maxLength": 16 },
+        "roleTitle": { "type": "string", "enum": ["Owner", "Admin", "Moderator", "Builder", "Helper"] },
+        "bio": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "discordHandle": { "type": "string", "maxLength": 60 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["minecraftUsername", "roleTitle", "bio", "order", "published", "createdAt", "updatedAt"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Community build showcase item with builder credit and lightbox support.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "builderCredit": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "completionDate": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["title", "category", "builderCredit", "description", "completionDate", "imageUrl", "published", "createdAt", "updatedAt"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Public player testimonial and rating.",
+      "type": "object",
+      "properties": {
+        "minecraftUsername": { "type": "string", "minLength": 3, "maxLength": 16 },
+        "quote": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "rating": { "type": "number" },
+        "playingSince": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["minecraftUsername", "quote", "rating", "playingSince", "published", "createdAt", "updatedAt"]
+    },
+    "CommunityEvent": {
+      "title": "CommunityEvent",
+      "description": "Upcoming or past community tournament/event.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "eventDate": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "eventTime": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "prize": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "discordLink": { "type": "string", "maxLength": 300 },
+        "isPast": { "type": "boolean" },
+        "winnerSummary": { "type": "string", "maxLength": 400 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["title", "eventDate", "eventTime", "description", "prize", "isPast", "published", "createdAt", "updatedAt"]
+    },
+    "NewsArticle": {
+      "title": "NewsArticle",
+      "description": "Server news, patch notes, and community announcements.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "publishDate": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 5000 },
+        "imageUrl": { "type": "string", "maxLength": 500 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["title", "publishDate", "authorName", "category", "summary", "content", "published", "createdAt", "updatedAt"]
+    },
+    "SocialLink": {
+      "title": "SocialLink",
+      "description": "External community link card.",
+      "type": "object",
+      "properties": {
+        "platform": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "url": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "colorHex": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "isPrimary": { "type": "boolean" },
+        "order": { "type": "number" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["platform", "label", "url", "description", "colorHex", "isPrimary", "order", "published", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account documents containing private email and role."
+    },
+    "/site_settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Global site settings document (singleton 'main')."
+    },
+    "/stories/{storyId}": {
+      "schema": "Story",
+      "description": "Server story timeline milestones."
+    },
+    "/rules/{ruleId}": {
+      "schema": "Rule",
+      "description": "Categorized server rules."
+    },
+    "/commands/{commandId}": {
+      "schema": "ServerCommand",
+      "description": "In-game Minecraft commands managed by admins."
+    },
+    "/join_steps/{stepId}": {
+      "schema": "JoinStep",
+      "description": "Java and Bedrock connection steps."
+    },
+    "/faqs/{faqId}": {
+      "schema": "Faq",
+      "description": "Frequently asked questions."
+    },
+    "/features/{featureId}": {
+      "schema": "Feature",
+      "description": "Server features and Home preview cards."
+    },
+    "/game_modes/{modeId}": {
+      "schema": "GameMode",
+      "description": "Server game modes and access commands."
+    },
+    "/leaderboards/{entryId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Admin-managed leaderboard rankings."
+    },
+    "/staff/{staffId}": {
+      "schema": "StaffMember",
+      "description": "Server staff and team members."
+    },
+    "/gallery/{itemId}": {
+      "schema": "GalleryItem",
+      "description": "Community build showcase items."
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Player testimonials and ratings."
+    },
+    "/events/{eventId}": {
+      "schema": "CommunityEvent",
+      "description": "Upcoming and past community events."
+    },
+    "/news/{articleId}": {
+      "schema": "NewsArticle",
+      "description": "Server announcements and news updates."
+    },
+    "/social_links/{linkId}": {
+      "schema": "SocialLink",
+      "description": "Official social platform links."
+    }
+  }
+}
