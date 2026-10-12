@@ -1,4 +1,4 @@
-import { doc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   CommunityEventItem,
@@ -59,10 +59,10 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   bedrockHost: 'bedrock.proplayers.gg',
   bedrockPort: 19132,
   minecraftVersion: '1.20.4 – 1.21.x (Java & Bedrock)',
-  discordUrl: 'https://discord.gg/proplayers',
-  youtubeUrl: 'https://youtube.com/@proplayersmc',
-  instagramUrl: 'https://instagram.com/proplayersmc',
-  facebookUrl: 'https://facebook.com/proplayersmc',
+  discordUrl: '',
+  youtubeUrl: '',
+  instagramUrl: '',
+  facebookUrl: '',
   announcementEnabled: true,
   announcementType: 'news',
   announcementTitle: 'Season IV Crossplay Update Live!',
@@ -1009,26 +1009,40 @@ export const SEED_SOCIAL_LINKS: SocialLinkItem[] = [
   },
 ];
 
-// Helper for Admins to seed all default data into Cloud Firestore
+// Helper for Admins to seed default data into Cloud Firestore ONLY for empty collections (never overwrites existing live data)
 export async function seedDatabaseToFirestore(): Promise<void> {
   const now = new Date().toISOString();
 
-  // 1. Site Settings
+  // 1. Site Settings — only create if site_settings/main does not exist yet
   try {
-    const { id: _id, ...settingsData } = DEFAULT_SITE_SETTINGS;
-    await setDoc(doc(db, 'site_settings', 'main'), {
-      ...settingsData,
-      updatedAt: now,
-    });
+    const settingsRef = doc(db, 'site_settings', 'main');
+    const existingSettings = await getDoc(settingsRef);
+    if (!existingSettings.exists()) {
+      const { id: _id, ...settingsData } = DEFAULT_SITE_SETTINGS;
+      await setDoc(settingsRef, {
+        ...settingsData,
+        updatedAt: now,
+      });
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, 'site_settings/main');
   }
 
-  // Helper to seed a list of documents in parallel
+  // Helper to seed a collection ONLY if the collection is currently empty in Firestore
   async function seedCollection<T extends { id: string }>(
     colName: string,
     items: T[]
   ) {
+    try {
+      const existingSnap = await getDocs(collection(db, colName));
+      if (!existingSnap.empty) {
+        // Collection already has live data in Firestore — never overwrite!
+        return;
+      }
+    } catch {
+      return;
+    }
+
     await Promise.all(
       items.map(async (item) => {
         const { id, ...rest } = item;

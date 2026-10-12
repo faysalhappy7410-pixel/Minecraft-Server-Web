@@ -17,19 +17,6 @@ import {
 import {
   DEFAULT_SITE_SETTINGS,
   normalizeRuleCategory,
-  SEED_COMMANDS,
-  SEED_EVENTS,
-  SEED_FAQS,
-  SEED_FEATURES,
-  SEED_GALLERY,
-  SEED_GAME_MODES,
-  SEED_JOIN_STEPS,
-  SEED_NEWS,
-  SEED_RULES,
-  SEED_SOCIAL_LINKS,
-  SEED_STAFF,
-  SEED_STORIES,
-  SEED_TESTIMONIALS,
 } from '../data/seedData';
 import {
   CommandCategory,
@@ -68,6 +55,20 @@ export function markCollectionCustomized(colName: string): void {
     localStorage.setItem(`${CUSTOMIZED_COLLECTION_PREFIX}${colName}`, 'true');
   } catch {
     // Ignore storage error
+  }
+}
+
+const LEGACY_PLACEHOLDER_DISCORD = 'https://discord.gg/proplayers';
+
+function isValidHttpUrl(url?: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '#' || trimmed === 'https://') return false;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
   }
 }
 
@@ -158,49 +159,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
+  // All CMS states are fetched live in real-time directly from Firebase Firestore (no hardcoded seed fallbacks)
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
-  const [stories, setStories] = useState<StoryItem[]>(
-    isCollectionMarkedCustomized('stories') ? [] : SEED_STORIES
-  );
-  const [rules, setRules] = useState<RuleItem[]>(
-    isCollectionMarkedCustomized('rules') ? [] : SEED_RULES
-  );
-  const [commands, setCommands] = useState<ServerCommandItem[]>(
-    isCollectionMarkedCustomized('commands') ? [] : SEED_COMMANDS
-  );
-  const [joinSteps, setJoinSteps] = useState<JoinStepItem[]>(
-    isCollectionMarkedCustomized('join_steps') ? [] : SEED_JOIN_STEPS
-  );
-  const [faqs, setFaqs] = useState<FaqItem[]>(
-    isCollectionMarkedCustomized('faqs') ? [] : SEED_FAQS
-  );
-  const [features, setFeatures] = useState<FeatureItem[]>(
-    isCollectionMarkedCustomized('features') ? [] : SEED_FEATURES
-  );
-  const [gameModes, setGameModes] = useState<GameModeItem[]>(
-    isCollectionMarkedCustomized('game_modes') ? [] : SEED_GAME_MODES
-  );
-  // Leaderboards default to live Firestore entries so the stylish placeholder state is shown when no entries exist yet
+  const [stories, setStories] = useState<StoryItem[]>([]);
+  const [rules, setRules] = useState<RuleItem[]>([]);
+  const [commands, setCommands] = useState<ServerCommandItem[]>([]);
+  const [joinSteps, setJoinSteps] = useState<JoinStepItem[]>([]);
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+  const [features, setFeatures] = useState<FeatureItem[]>([]);
+  const [gameModes, setGameModes] = useState<GameModeItem[]>([]);
   const [leaderboards, setLeaderboards] = useState<LeaderboardEntryItem[]>([]);
-  const [staff, setStaff] = useState<StaffMemberItem[]>(
-    isCollectionMarkedCustomized('staff') ? [] : SEED_STAFF
-  );
-  const [gallery, setGallery] = useState<GalleryItem[]>(
-    isCollectionMarkedCustomized('gallery') ? [] : SEED_GALLERY
-  );
-  const [testimonials, setTestimonials] = useState<TestimonialItem[]>(
-    isCollectionMarkedCustomized('testimonials') ? [] : SEED_TESTIMONIALS
-  );
-  const [events, setEvents] = useState<CommunityEventItem[]>(
-    isCollectionMarkedCustomized('events') ? [] : SEED_EVENTS
-  );
+  const [staff, setStaff] = useState<StaffMemberItem[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
+  const [events, setEvents] = useState<CommunityEventItem[]>([]);
   const [eventReminders, setEventReminders] = useState<EventReminderItem[]>([]);
-  const [news, setNews] = useState<NewsArticleItem[]>(
-    isCollectionMarkedCustomized('news') ? [] : SEED_NEWS
-  );
-  const [socialLinks, setSocialLinks] = useState<SocialLinkItem[]>(
-    isCollectionMarkedCustomized('social_links') ? [] : SEED_SOCIAL_LINKS
-  );
+  const [news, setNews] = useState<NewsArticleItem[]>([]);
+  const [socialLinks, setSocialLinks] = useState<SocialLinkItem[]>([]);
   const [cmsLoading, setCmsLoading] = useState<boolean>(true);
   const [isUsingSeedFallback, setIsUsingSeedFallback] = useState<boolean>(false);
 
@@ -380,30 +355,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [siteSettings]);
 
-  const resolveCollectionItems = useCallback(
-    <T extends { id: string }>(
-      colName: string,
-      firestoreDocs: T[],
-      seedFallback: T[],
-      isFirestoreEmpty: boolean
-    ): T[] => {
-      if (!isFirestoreEmpty) {
-        markCollectionCustomized(colName);
-        return firestoreDocs;
-      }
-      if (isCollectionMarkedCustomized(colName)) {
-        return [];
-      }
-      return seedFallback;
-    },
-    []
-  );
-
-  // Manual refresh from Firebase Firestore
+  // Manual refresh from Firebase Firestore (strictly live database documents, zero hardcoded seed fallbacks)
   const refreshCms = useCallback(async () => {
     setCmsLoading(true);
     try {
-      // 1. Site Settings
+      // 1. Site Settings from Firestore
       try {
         const settingsSnap = await getDocs(collection(db, 'site_settings'));
         if (!settingsSnap.empty) {
@@ -415,37 +371,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (isCust) markCollectionCustomized(col);
             });
           }
-          const isOldDefaultLogo =
-            !loadedSettings.officialLogoUrl ||
-            loadedSettings.officialLogoUrl.includes('pro_players_logo_') ||
-            loadedSettings.officialLogoUrl.includes('pro_players_official_emblem_') ||
-            loadedSettings.officialLogoUrl.includes('minecraft_players_esports_logo_');
           setSiteSettings({
             id: mainDoc.id,
             ...DEFAULT_SITE_SETTINGS,
             ...loadedSettings,
-            officialLogoUrl: isOldDefaultLogo
-              ? DEFAULT_SITE_SETTINGS.officialLogoUrl
-              : loadedSettings.officialLogoUrl,
+            officialLogoUrl:
+              loadedSettings.officialLogoUrl || DEFAULT_SITE_SETTINGS.officialLogoUrl,
           });
         }
       } catch {
         // Keep current siteSettings if unreachable
       }
 
-      async function fetchCollectionWithFallback<T extends { id: string }>(
+      async function fetchLiveCollection<T extends { id: string }>(
         colName: string,
-        seedItems: T[],
         mapDoc: (id: string, data: Record<string, unknown>) => T,
         sortFn?: (a: T, b: T) => number
-      ): Promise<{ items: T[]; usedSeed: boolean }> {
+      ): Promise<T[]> {
         try {
           const snap = await getDocs(collection(db, colName));
           if (snap.empty) {
-            if (isCollectionMarkedCustomized(colName)) {
-              return { items: [], usedSeed: false };
-            }
-            return { items: seedItems, usedSeed: seedItems.length > 0 };
+            return [];
           }
           markCollectionCustomized(colName);
           const items = snap.docs
@@ -453,15 +399,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .filter(
               (item) => (item as unknown as { published?: boolean }).published !== false
             );
-          return {
-            items: sortFn ? [...items].sort(sortFn) : items,
-            usedSeed: false,
-          };
+          return sortFn ? [...items].sort(sortFn) : items;
         } catch {
-          return {
-            items: isCollectionMarkedCustomized(colName) ? [] : seedItems,
-            usedSeed: !isCollectionMarkedCustomized(colName) && seedItems.length > 0,
-          };
+          return [];
         }
       }
 
@@ -471,62 +411,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ): T => ({ id, ...data }) as unknown as T;
 
       const [
-        resStories,
-        resRules,
-        resCommands,
-        resJoinSteps,
-        resFaqs,
-        resFeatures,
-        resGameModes,
-        resLeaderboards,
-        resStaff,
-        resGallery,
-        resTestimonials,
-        resEvents,
-        resNews,
-        resSocialLinks,
+        liveStories,
+        liveRules,
+        liveCommands,
+        liveJoinSteps,
+        liveFaqs,
+        liveFeatures,
+        liveGameModes,
+        liveLeaderboards,
+        liveStaff,
+        liveGallery,
+        liveTestimonials,
+        liveEvents,
+        liveNews,
+        liveSocialLinks,
       ] = await Promise.all([
-        fetchCollectionWithFallback<StoryItem>('stories', SEED_STORIES, defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<RuleItem>('rules', SEED_RULES, normalizeRuleDoc, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<ServerCommandItem>('commands', SEED_COMMANDS, normalizeCommandDoc, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<JoinStepItem>('join_steps', SEED_JOIN_STEPS, defaultMap, (a, b) => (Number(a.stepNumber) || 0) - (Number(b.stepNumber) || 0)),
-        fetchCollectionWithFallback<FaqItem>('faqs', SEED_FAQS, defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<FeatureItem>('features', SEED_FEATURES, defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<GameModeItem>('game_modes', SEED_GAME_MODES, normalizeWarpDoc, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<LeaderboardEntryItem>('leaderboards', [], defaultMap, (a, b) => (Number(a.rank) || 1) - (Number(b.rank) || 1)),
-        fetchCollectionWithFallback<StaffMemberItem>('staff', SEED_STAFF, defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
-        fetchCollectionWithFallback<GalleryItem>('gallery', SEED_GALLERY, defaultMap),
-        fetchCollectionWithFallback<TestimonialItem>('testimonials', SEED_TESTIMONIALS, defaultMap),
-        fetchCollectionWithFallback<CommunityEventItem>('events', SEED_EVENTS, defaultMap),
-        fetchCollectionWithFallback<NewsArticleItem>('news', SEED_NEWS, defaultMap, (a, b) =>
+        fetchLiveCollection<StoryItem>('stories', defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<RuleItem>('rules', normalizeRuleDoc, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<ServerCommandItem>('commands', normalizeCommandDoc, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<JoinStepItem>('join_steps', defaultMap, (a, b) => (Number(a.stepNumber) || 0) - (Number(b.stepNumber) || 0)),
+        fetchLiveCollection<FaqItem>('faqs', defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<FeatureItem>('features', defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<GameModeItem>('game_modes', normalizeWarpDoc, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<LeaderboardEntryItem>('leaderboards', defaultMap, (a, b) => (Number(a.rank) || 1) - (Number(b.rank) || 1)),
+        fetchLiveCollection<StaffMemberItem>('staff', defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<GalleryItem>('gallery', defaultMap),
+        fetchLiveCollection<TestimonialItem>('testimonials', defaultMap),
+        fetchLiveCollection<CommunityEventItem>('events', defaultMap),
+        fetchLiveCollection<NewsArticleItem>('news', defaultMap, (a, b) =>
           String(b.publishDate || '').localeCompare(String(a.publishDate || ''))
         ),
-        fetchCollectionWithFallback<SocialLinkItem>('social_links', SEED_SOCIAL_LINKS, defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
+        fetchLiveCollection<SocialLinkItem>('social_links', defaultMap, (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)),
       ]);
 
-      setStories(resStories.items);
-      setRules(resRules.items);
-      setCommands(resCommands.items);
-      setJoinSteps(resJoinSteps.items);
-      setFaqs(resFaqs.items);
-      setFeatures(resFeatures.items);
-      setGameModes(resGameModes.items);
-      setLeaderboards(resLeaderboards.items);
-      setStaff(resStaff.items);
-      setGallery(resGallery.items);
-      setTestimonials(resTestimonials.items);
-      setEvents(resEvents.items);
-      setNews(resNews.items);
-      setSocialLinks(resSocialLinks.items);
-      setIsUsingSeedFallback(
-        resRules.usedSeed || resCommands.usedSeed || resGameModes.usedSeed
-      );
+      setStories(liveStories);
+      setRules(liveRules);
+      setCommands(liveCommands);
+      setJoinSteps(liveJoinSteps);
+      setFaqs(liveFaqs);
+      setFeatures(liveFeatures);
+      setGameModes(liveGameModes);
+      setLeaderboards(liveLeaderboards);
+      setStaff(liveStaff);
+      setGallery(liveGallery);
+      setTestimonials(liveTestimonials);
+      setEvents(liveEvents);
+      setNews(liveNews);
+      setSocialLinks(liveSocialLinks);
+      setIsUsingSeedFallback(false);
     } finally {
       setCmsLoading(false);
     }
   }, []);
 
-  // Real-time Firestore listeners so any Admin edit/delete/add immediately reflects on live pages
+  // Real-time Firestore listeners so any database update immediately reflects on live pages
   useEffect(() => {
     refreshCms();
 
@@ -545,18 +483,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (isCust) markCollectionCustomized(col);
               });
             }
-            const isOldDefaultLogo =
-              !loadedSettings.officialLogoUrl ||
-              loadedSettings.officialLogoUrl.includes('pro_players_logo_') ||
-              loadedSettings.officialLogoUrl.includes('pro_players_official_emblem_') ||
-              loadedSettings.officialLogoUrl.includes('minecraft_players_esports_logo_');
             setSiteSettings({
               id: mainDoc.id,
               ...DEFAULT_SITE_SETTINGS,
               ...loadedSettings,
-              officialLogoUrl: isOldDefaultLogo
-                ? DEFAULT_SITE_SETTINGS.officialLogoUrl
-                : loadedSettings.officialLogoUrl,
+              officialLogoUrl:
+                loadedSettings.officialLogoUrl || DEFAULT_SITE_SETTINGS.officialLogoUrl,
             });
           }
         },
@@ -573,7 +505,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => normalizeCommandDoc(d.id, d.data() as Record<string, unknown>))
             .filter((c) => c.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setCommands(resolveCollectionItems('commands', docs, SEED_COMMANDS, snap.empty));
+          setCommands(docs);
           setCmsLoading(false);
         },
         () => {}
@@ -589,7 +521,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => normalizeWarpDoc(d.id, d.data() as Record<string, unknown>))
             .filter((m) => m.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setGameModes(resolveCollectionItems('game_modes', docs, SEED_GAME_MODES, snap.empty));
+          setGameModes(docs);
           setCmsLoading(false);
         },
         () => {}
@@ -605,7 +537,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => normalizeRuleDoc(d.id, d.data() as Record<string, unknown>))
             .filter((r) => r.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setRules(resolveCollectionItems('rules', docs, SEED_RULES, snap.empty));
+          setRules(docs);
         },
         () => {}
       )
@@ -620,7 +552,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<JoinStepItem, 'id'>) }))
             .filter((s) => s.published !== false)
             .sort((a, b) => (Number(a.stepNumber) || 0) - (Number(b.stepNumber) || 0));
-          setJoinSteps(resolveCollectionItems('join_steps', docs, SEED_JOIN_STEPS, snap.empty));
+          setJoinSteps(docs);
         },
         () => {}
       )
@@ -635,7 +567,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<FaqItem, 'id'>) }))
             .filter((f) => f.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setFaqs(resolveCollectionItems('faqs', docs, SEED_FAQS, snap.empty));
+          setFaqs(docs);
         },
         () => {}
       )
@@ -650,7 +582,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<StoryItem, 'id'>) }))
             .filter((s) => s.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setStories(resolveCollectionItems('stories', docs, SEED_STORIES, snap.empty));
+          setStories(docs);
         },
         () => {}
       )
@@ -665,7 +597,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<FeatureItem, 'id'>) }))
             .filter((f) => f.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setFeatures(resolveCollectionItems('features', docs, SEED_FEATURES, snap.empty));
+          setFeatures(docs);
         },
         () => {}
       )
@@ -679,7 +611,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const docs = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as Omit<CommunityEventItem, 'id'>) }))
             .filter((e) => e.published !== false);
-          setEvents(resolveCollectionItems('events', docs, SEED_EVENTS, snap.empty));
+          setEvents(docs);
         },
         () => {}
       )
@@ -693,7 +625,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<NewsArticleItem, 'id'>) }))
             .filter((n) => n.published !== false)
             .sort((a, b) => String(b.publishDate || '').localeCompare(String(a.publishDate || '')));
-          setNews(resolveCollectionItems('news', docs, SEED_NEWS, snap.empty));
+          setNews(docs);
         },
         () => {}
       )
@@ -721,7 +653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<StaffMemberItem, 'id'>) }))
             .filter((s) => s.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setStaff(resolveCollectionItems('staff', docs, SEED_STAFF, snap.empty));
+          setStaff(docs);
         },
         () => {}
       )
@@ -734,7 +666,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const docs = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as Omit<GalleryItem, 'id'>) }))
             .filter((g) => g.published !== false);
-          setGallery(resolveCollectionItems('gallery', docs, SEED_GALLERY, snap.empty));
+          setGallery(docs);
         },
         () => {}
       )
@@ -747,7 +679,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const docs = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as Omit<TestimonialItem, 'id'>) }))
             .filter((t) => t.published !== false);
-          setTestimonials(resolveCollectionItems('testimonials', docs, SEED_TESTIMONIALS, snap.empty));
+          setTestimonials(docs);
         },
         () => {}
       )
@@ -761,7 +693,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .map((d) => ({ id: d.id, ...(d.data() as Omit<SocialLinkItem, 'id'>) }))
             .filter((s) => s.published !== false)
             .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-          setSocialLinks(resolveCollectionItems('social_links', docs, SEED_SOCIAL_LINKS, snap.empty));
+          setSocialLinks(docs);
         },
         () => {}
       )
@@ -770,7 +702,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       unsubscribers.forEach((unsub) => unsub());
     };
-  }, [refreshCms, resolveCollectionItems]);
+  }, [refreshCms]);
 
   // Separate, safe live server status fetch using mcstatus.io
   const refreshServerStatus = useCallback(
@@ -923,41 +855,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isOwnerEmail = isSuperAdminEmail(user?.email || userProfile?.email);
   const isAdmin = Boolean(isOwnerEmail || userProfile?.role === 'admin');
 
-  // Automatically connect & sync Discord (and other social URLs) from the Links section (socialLinks) across all pages
+  // Automatically connect & sync Discord (and other social URLs) from live Firestore socialLinks and siteSettings across all pages
   const syncedSiteSettings = React.useMemo<SiteSettings>(() => {
-    const findPlatformUrl = (platformName: string, checkPrimary = false): string | undefined => {
-      const match = socialLinks.find(
-        (l) =>
-          l.published !== false &&
-          (l.platform?.toLowerCase() === platformName.toLowerCase() ||
-            (checkPrimary && l.isPrimary)) &&
-          l.url?.trim() &&
-          l.url.trim() !== '#'
-      );
-      return match?.url.trim();
-    };
+    const resolvePlatformUrl = (
+      platformName: string,
+      checkPrimary: boolean,
+      settingsUrl?: string
+    ): string => {
+      const matchingDocs = socialLinks
+        .filter(
+          (l) =>
+            l.published !== false &&
+            (l.platform?.toLowerCase() === platformName.toLowerCase() ||
+              (checkPrimary && l.isPrimary)) &&
+            isValidHttpUrl(l.url)
+        )
+        .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
 
-    const discordFromLinks = findPlatformUrl('discord', true);
-    const youtubeFromLinks = findPlatformUrl('youtube');
-    const instagramFromLinks = findPlatformUrl('instagram');
-    const facebookFromLinks = findPlatformUrl('facebook');
+      // 1. Prefer any custom (non-placeholder) URL from live Firestore social_links
+      const customFromSocialLinks = matchingDocs.find(
+        (l) => l.url.trim().toLowerCase() !== LEGACY_PLACEHOLDER_DISCORD
+      );
+      if (customFromSocialLinks) {
+        return customFromSocialLinks.url.trim();
+      }
+
+      // 2. Otherwise prefer a custom (non-placeholder) URL from live Firestore site_settings
+      if (
+        isValidHttpUrl(settingsUrl) &&
+        settingsUrl!.trim().toLowerCase() !== LEGACY_PLACEHOLDER_DISCORD
+      ) {
+        return settingsUrl!.trim();
+      }
+
+      // 3. Otherwise use whichever valid URL exists in live Firestore social_links or site_settings
+      if (matchingDocs.length > 0) {
+        return matchingDocs[0].url.trim();
+      }
+      if (isValidHttpUrl(settingsUrl)) {
+        return settingsUrl!.trim();
+      }
+      return '';
+    };
 
     return {
       ...siteSettings,
-      discordUrl: discordFromLinks || siteSettings.discordUrl,
-      youtubeUrl: youtubeFromLinks || siteSettings.youtubeUrl,
-      instagramUrl: instagramFromLinks || siteSettings.instagramUrl,
-      facebookUrl: facebookFromLinks || siteSettings.facebookUrl,
+      discordUrl: resolvePlatformUrl('discord', true, siteSettings.discordUrl),
+      youtubeUrl: resolvePlatformUrl('youtube', false, siteSettings.youtubeUrl),
+      instagramUrl: resolvePlatformUrl('instagram', false, siteSettings.instagramUrl),
+      facebookUrl: resolvePlatformUrl('facebook', false, siteSettings.facebookUrl),
     };
   }, [siteSettings, socialLinks]);
 
-  // Automatically update any event using the default placeholder Discord link to use the connected Discord link from the Links section
+  // Ensure socialLinks entries for Discord also reflect the live synced Discord URL
+  const syncedSocialLinks = React.useMemo<SocialLinkItem[]>(() => {
+    const activeDiscord = syncedSiteSettings.discordUrl;
+    if (!activeDiscord) return socialLinks;
+    return socialLinks.map((link) => {
+      if (link.platform?.toLowerCase() === 'discord' || link.isPrimary) {
+        return {
+          ...link,
+          url: activeDiscord,
+        };
+      }
+      return link;
+    });
+  }, [socialLinks, syncedSiteSettings.discordUrl]);
+
+  // Automatically update any event using an empty or legacy placeholder Discord link to use the live connected Discord link from Firestore
   const syncedEvents = React.useMemo<CommunityEventItem[]>(() => {
     const activeDiscord = syncedSiteSettings.discordUrl;
     if (!activeDiscord) return events;
     return events.map((evt) => {
       const rawLink = (evt.discordLink || '').trim();
-      if (!rawLink || rawLink === 'https://discord.gg/proplayers') {
+      if (!rawLink || rawLink.toLowerCase() === LEGACY_PLACEHOLDER_DISCORD) {
         return {
           ...evt,
           discordLink: activeDiscord,
@@ -993,7 +964,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         remindedEventIds,
         toggleEventReminder,
         news,
-        socialLinks,
+        socialLinks: syncedSocialLinks,
         cmsLoading,
         isUsingSeedFallback,
         refreshCms,

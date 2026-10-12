@@ -477,7 +477,7 @@ const COLLECTION_SCHEMAS: Record<
       eventDate: 'November 2026',
       eventTime: '18:00 UTC',
       prize: '',
-      discordLink: 'https://discord.gg/proplayers',
+      discordLink: '',
       description: '',
       imageUrl: '',
       isPast: false,
@@ -643,28 +643,6 @@ export const AdminPage: React.FC = () => {
     try {
       const snap = await getDocs(collection(db, colKey));
       if (snap.empty) {
-        // If this collection has never been customized and is not 'leaderboards', materialize starter items into Firestore once so edits/deletes operate on real Firestore docs!
-        if (!isCollectionMarkedCustomized(colKey) && colKey !== 'leaderboards') {
-          const seedItems = SEED_FALLBACK_MAP[colKey] || [];
-          const now = new Date().toISOString();
-          await Promise.all(
-            seedItems.map(async (item) => {
-              const { id, ...rest } = item as Record<string, unknown> & { id: string };
-              await setDoc(doc(db, colKey, id), {
-                ...rest,
-                updatedAt: now,
-              });
-            })
-          );
-          markCollectionCustomized(colKey);
-          const materializedDocs = sortDocs(
-            seedItems.map((item) =>
-              normalizeAdminDoc(item.id, item as unknown as Record<string, unknown>)
-            )
-          );
-          setCollectionDocs(materializedDocs);
-          return;
-        }
         setCollectionDocs([]);
         return;
       }
@@ -842,14 +820,27 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  // Seed ONLY the currently active collection into Firebase Firestore
+  // Seed ONLY missing default items for the active collection into Firebase Firestore (never overwrites existing live documents)
   const handleSeedSingleCollection = async (colKey: CmsCollectionKey) => {
     setBusy(true);
     setStatusBanner(null);
     try {
       assertAdminAccess(isAdmin, `seed ${colKey} collection`);
+      const existingSnap = await getDocs(collection(db, colKey));
+      const existingIds = new Set(existingSnap.docs.map((d) => d.id));
       const now = new Date().toISOString();
-      const seedItems = SEED_FALLBACK_MAP[colKey] || [];
+      const seedItems = (SEED_FALLBACK_MAP[colKey] || []).filter(
+        (item) => !existingIds.has(item.id)
+      );
+
+      if (seedItems.length === 0) {
+        setStatusBanner({
+          type: 'success',
+          message: `All ${COLLECTION_SCHEMAS[colKey].title} records already exist in Firestore — existing live data was preserved without overwriting.`,
+        });
+        return;
+      }
+
       await Promise.all(
         seedItems.map(async (item) => {
           const { id, ...rest } = item as Record<string, unknown> & { id: string };
@@ -864,7 +855,7 @@ export const AdminPage: React.FC = () => {
       await refreshCms();
       setStatusBanner({
         type: 'success',
-        message: `Seeded ${seedItems.length} default ${COLLECTION_SCHEMAS[colKey].title} items into Firebase Firestore!`,
+        message: `Added ${seedItems.length} missing starter ${COLLECTION_SCHEMAS[colKey].title} items into Firebase Firestore (existing records preserved)!`,
       });
     } catch (err: unknown) {
       setStatusBanner({
@@ -885,6 +876,7 @@ export const AdminPage: React.FC = () => {
       assertAdminAccess(isAdmin, 'update Site Settings');
 
       const now = new Date().toISOString();
+      const cleanDiscordUrl = (settingsForm.discordUrl || '').trim().slice(0, 300);
       const firestorePayload: Omit<SiteSettings, 'id'> = {
         siteName: 'PRO PLAYERS',
         tagline: settingsForm.tagline.trim().slice(0, 160),
@@ -899,7 +891,7 @@ export const AdminPage: React.FC = () => {
         bedrockHost: settingsForm.bedrockHost.trim().slice(0, 120),
         bedrockPort: Number(settingsForm.bedrockPort) || 19132,
         minecraftVersion: settingsForm.minecraftVersion.trim().slice(0, 60),
-        discordUrl: (settingsForm.discordUrl || '').trim().slice(0, 300),
+        discordUrl: cleanDiscordUrl,
         youtubeUrl: (settingsForm.youtubeUrl || '').trim().slice(0, 300),
         instagramUrl: (settingsForm.instagramUrl || '').trim().slice(0, 300),
         facebookUrl: (settingsForm.facebookUrl || '').trim().slice(0, 300),
@@ -914,7 +906,33 @@ export const AdminPage: React.FC = () => {
         updatedAt: now,
       };
 
-      await setDoc(doc(db, 'site_settings', 'main'), firestorePayload);
+      await setDoc(doc(db, 'site_settings', 'main'), firestorePayload, { merge: true });
+
+      // Also sync the updated Discord URL to any Discord entry in social_links so both collections stay 100% aligned
+      if (cleanDiscordUrl && cleanDiscordUrl !== '#') {
+        try {
+          const socialSnap = await getDocs(collection(db, 'social_links'));
+          const discordDocs = socialSnap.docs.filter((d) => {
+            const data = d.data() as Record<string, unknown>;
+            return (
+              String(data.platform || '').toLowerCase() === 'discord' ||
+              Boolean(data.isPrimary)
+            );
+          });
+          await Promise.all(
+            discordDocs.map((d) =>
+              setDoc(
+                doc(db, 'social_links', d.id),
+                { url: cleanDiscordUrl, updatedAt: now },
+                { merge: true }
+              )
+            )
+          );
+        } catch {
+          // Ignore if social_links sync is skipped
+        }
+      }
+
       await refreshCms();
       setStatusBanner({
         type: 'success',
@@ -1072,14 +1090,33 @@ export const AdminPage: React.FC = () => {
           }
 
           if (Object.keys(settingsPatch).length > 0) {
-            const { id: _ignoreId, ...currentSettingsData } = siteSettings;
-            const nextSettingsPayload: Omit<SiteSettings, 'id'> = {
-              ...currentSettingsData,
-              ...settingsPatch,
-              updatedAt: now,
-            };
-            await setDoc(doc(db, 'site_settings', 'main'), nextSettingsPayload);
+            await setDoc(
+              doc(db, 'site_settings', 'main'),
+              {
+                ...settingsPatch,
+                updatedAt: now,
+              },
+              { merge: true }
+            );
             setSettingsForm((prev) => ({ ...prev, ...settingsPatch, updatedAt: now }));
+          }
+
+          // If this was a Discord link update, also sync any other Discord documents in social_links so no stale duplicate URL remains
+          if (platformLower === 'discord' || Boolean(cleanPayload.isPrimary)) {
+            const otherDiscordDocs = collectionDocs.filter(
+              (d) =>
+                String(d.id) !== docId &&
+                (String(d.platform || '').toLowerCase() === 'discord' || Boolean(d.isPrimary))
+            );
+            await Promise.all(
+              otherDiscordDocs.map((d) =>
+                setDoc(
+                  doc(db, 'social_links', String(d.id)),
+                  { url: updatedUrl, updatedAt: now },
+                  { merge: true }
+                )
+              )
+            );
           }
         }
       }

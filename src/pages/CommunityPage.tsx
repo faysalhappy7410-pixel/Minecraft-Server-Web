@@ -45,6 +45,7 @@ const LEADERBOARD_CATEGORIES: LeaderboardCategory[] = [
 export const CommunityPage: React.FC = () => {
   const {
     siteSettings,
+    socialLinks,
     userProfile,
     leaderboards,
     staff,
@@ -54,6 +55,19 @@ export const CommunityPage: React.FC = () => {
     news,
     rules,
   } = useApp();
+
+  const connectedDiscordUrl =
+    socialLinks
+      .find(
+        (link) =>
+          link.published !== false &&
+          (link.platform?.toLowerCase() === 'discord' || link.isPrimary) &&
+          link.url?.trim() &&
+          link.url.trim() !== '#'
+      )
+      ?.url.trim() ||
+    siteSettings.discordUrl?.trim() ||
+    '';
 
   const [activeLeaderboardTab, setActiveLeaderboardTab] =
     useState<LeaderboardCategory>('PvP Master');
@@ -95,7 +109,7 @@ export const CommunityPage: React.FC = () => {
   // Highlighted rules for the Community Rules & Events Showcase
   const highlightedRules = rules.slice(0, 4);
 
-  // Build safe public player profiles from community members + current user (if logged in)
+  // Build safe public player profiles dynamically from live Firestore data (current user, staff, and leaderboard players)
   // Strictly excludes private email addresses and internal role fields!
   const featuredPublicProfiles: PublicPlayerProfile[] = [
     ...(userProfile
@@ -103,39 +117,42 @@ export const CommunityPage: React.FC = () => {
           {
             uid: userProfile.uid,
             minecraftUsername: userProfile.minecraftUsername,
+            avatarUrl: userProfile.avatarUrl,
             bio:
               userProfile.bio ||
               'Active PRO PLAYERS community member exploring Java & Bedrock realms.',
             discordUsername: userProfile.discordUsername,
             instagramUrl: userProfile.instagramUrl,
             facebookUrl: userProfile.facebookUrl,
-            badges: ['Verified Player', 'Season IV Member'],
+            badges: ['Verified Player', 'Community Member'],
           },
         ]
       : []),
-    {
-      uid: 'pub_1',
-      minecraftUsername: 'VortexBlade_',
-      bio: 'Obsidian Colosseum duelist and Netherite kit tactician. Always down for a 1v1 or 2v2 tournament warmup.',
-      discordUsername: 'vortexblade',
-      instagramUrl: 'https://instagram.com/proplayersmc',
-      badges: ['PvP Master #1', 'Event Champion'],
-    },
-    {
-      uid: 'pub_2',
-      minecraftUsername: 'LunaBlocks',
-      bio: 'Survival & Creative architect specializing in floating islands, Japanese temples, and bioluminescent gardens.',
-      discordUsername: 'lunablocks_mc',
-      badges: ['Master Builder', 'Elysium Architect'],
-    },
-    {
-      uid: 'pub_3',
-      minecraftUsername: 'RedstoneSage',
-      bio: 'Technical survival engineer building lag-friendly sorting halls and community beacon networks since founding.',
-      discordUsername: 'redstonesage',
-      badges: ['Play Time Legend', 'Veteran'],
-    },
-  ];
+    ...staff
+      .filter((s) => s.minecraftUsername !== userProfile?.minecraftUsername)
+      .slice(0, 3)
+      .map((member) => ({
+        uid: `staff_${member.id}`,
+        minecraftUsername: member.minecraftUsername,
+        avatarUrl: member.avatarUrl,
+        bio: member.bio,
+        discordUsername: member.discordHandle,
+        badges: [member.roleTitle, 'Official Staff'],
+      })),
+    ...leaderboards
+      .filter(
+        (entry) =>
+          entry.minecraftUsername !== userProfile?.minecraftUsername &&
+          !staff.some((s) => s.minecraftUsername === entry.minecraftUsername)
+      )
+      .slice(0, 3)
+      .map((entry) => ({
+        uid: `lb_${entry.id}`,
+        minecraftUsername: entry.minecraftUsername,
+        bio: `${entry.category} Rank #${entry.rank} (${entry.statValue} ${entry.statLabel})`,
+        badges: [`${entry.category} #${entry.rank}`],
+      })),
+  ].slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-20">
@@ -572,10 +589,10 @@ export const CommunityPage: React.FC = () => {
                 </div>
               </div>
 
-              {siteSettings.discordUrl && (
+              {connectedDiscordUrl && (
                 <div className="pt-2">
                   <a
-                    href={siteSettings.discordUrl}
+                    href={connectedDiscordUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-sm sm:text-base font-bold text-white bg-[#5865F2] hover:bg-[#4752C4] transition-colors shadow-lg"

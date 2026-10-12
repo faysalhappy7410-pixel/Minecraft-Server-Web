@@ -48,6 +48,7 @@ export const HomePage: React.FC = () => {
     socialLinks,
     features,
     commands,
+    rules,
     leaderboards,
     isAdmin,
     javaStatus,
@@ -66,7 +67,7 @@ export const HomePage: React.FC = () => {
   const bedrockIp = siteSettings.bedrockHost;
   const bedrockPort = String(Number(siteSettings.bedrockPort) || 19132);
 
-  // Connected Discord URL from the Links section (social_links collection), automatically synced when changed
+  // Connected Discord URL fetched in real-time from Firestore (social_links & site_settings)
   const connectedDiscordUrl =
     socialLinks
       .find(
@@ -76,7 +77,9 @@ export const HomePage: React.FC = () => {
           link.url?.trim() &&
           link.url.trim() !== '#'
       )
-      ?.url.trim() || siteSettings.discordUrl;
+      ?.url.trim() ||
+    siteSettings.discordUrl?.trim() ||
+    '';
 
   // Unified Crossplay Server Status (GeyserMC / Floodgate connects Java & Bedrock to the same server)
   const serverOnline = Boolean(javaStatus.online || bedrockStatus.online);
@@ -110,10 +113,15 @@ export const HomePage: React.FC = () => {
     .filter((f) => f.showOnHome !== false)
     .slice(0, 6);
 
-  // Essential Server Commands preview (top 6)
+  // Essential Server Commands preview (top 6 from live Firestore)
   const essentialCommands = commands
     .filter((c) => c.published !== false)
     .slice(0, 6);
+
+  // Live Server Rules preview (top 4 from live Firestore)
+  const homeRules = rules
+    .filter((r) => r.published !== false)
+    .slice(0, 4);
 
   // Leaderboard entries for selected category
   const currentLeaderboardEntries = leaderboards
@@ -807,41 +815,47 @@ export const HomePage: React.FC = () => {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {essentialCommands.map((cmd) => (
-                <div
-                  key={cmd.id}
-                  className="p-3.5 rounded-xl bg-slate-950/85 border border-slate-800/90 hover:border-emerald-500/40 flex flex-col justify-between gap-2 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <code className="px-2.5 py-1 rounded bg-slate-900 border border-emerald-500/25 font-mono text-xs font-bold text-emerald-300">
-                      {cmd.command}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(cmd.command, `home-cmd-${cmd.id}`)}
-                      className="text-[11px] font-semibold text-slate-400 hover:text-emerald-300 inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      {copiedTarget === `home-cmd-${cmd.id}` ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span className="text-emerald-400">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
+            {essentialCommands.length === 0 ? (
+              <div className="p-6 rounded-xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-400">
+                No server commands published in Firestore yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {essentialCommands.map((cmd) => (
+                  <div
+                    key={cmd.id}
+                    className="p-3.5 rounded-xl bg-slate-950/85 border border-slate-800/90 hover:border-emerald-500/40 flex flex-col justify-between gap-2 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="px-2.5 py-1 rounded bg-slate-900 border border-emerald-500/25 font-mono text-xs font-bold text-emerald-300">
+                        {cmd.command}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(cmd.command, `home-cmd-${cmd.id}`)}
+                        className="text-[11px] font-semibold text-slate-400 hover:text-emerald-300 inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedTarget === `home-cmd-${cmd.id}` ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{cmd.description}</p>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">{cmd.description}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Right 5 Columns: Structured Server Rules & Guidelines Summary */}
+          {/* Right 5 Columns: Structured Server Rules & Guidelines Summary (Live from Firestore) */}
           <div className="lg:col-span-5 rounded-2xl bg-slate-900/85 border border-slate-800/90 p-6 sm:p-8 flex flex-col justify-between space-y-5 shadow-xl">
             <div className="space-y-4">
               <div className="border-b border-slate-800 pb-4">
@@ -854,41 +868,31 @@ export const HomePage: React.FC = () => {
               </div>
 
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Our community enforces clear rules across four structured pillars to keep gameplay
-                welcoming and fair for every Java and Bedrock player:
+                Live server rules enforced across Java and Bedrock editions:
               </p>
 
-              <div className="space-y-2.5">
-                {[
-                  {
-                    title: '1. General Rules',
-                    desc: 'Respect all players & staff, account security, and crossplay fairness.',
-                  },
-                  {
-                    title: '2. Building/Griefing Rules',
-                    desc: 'Zero tolerance for griefing or theft, 64-block buffers, and lag-free farms.',
-                  },
-                  {
-                    title: '3. Chat & Behavior Etiquette',
-                    desc: 'Clean global chat, no external server advertising, and respectful /msg use.',
-                  },
-                  {
-                    title: '4. PvP/Fair Play',
-                    desc: 'No hacked clients, X-Ray, or macros; consensual wilderness PvP.',
-                  },
-                ].map((cat) => (
-                  <div
-                    key={cat.title}
-                    className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-0.5"
-                  >
-                    <div className="font-display text-sm font-bold text-white flex items-center gap-2">
-                      <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>{cat.title}</span>
+              {homeRules.length === 0 ? (
+                <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-400">
+                  No rules published in Firestore yet.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {homeRules.map((rule, idx) => (
+                    <div
+                      key={rule.id}
+                      className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-0.5"
+                    >
+                      <div className="font-display text-sm font-bold text-white flex items-center gap-2">
+                        <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>
+                          {idx + 1}. {rule.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 pl-5 line-clamp-2">{rule.description}</p>
                     </div>
-                    <p className="text-xs text-slate-400 pl-5">{cat.desc}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
