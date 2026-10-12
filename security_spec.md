@@ -16,6 +16,10 @@
 5. **Path Variable & String Size Hardening**:
    - Every single-document operation (`get`, `create`, `update`, `delete`) validates `isValidId(docId)` (`^[a-zA-Z0-9_\-]+$`, max 128 chars).
    - Every string field enforces `.size()` bounds matching `firebase-blueprint.json`.
+6. **Per-User Event Reminders (`/users/{userId}/event_reminders/{eventId}`)**:
+   - Only the authenticated owner (`isOwner(userId)`) or `isAdmin()` can read, create, update, or delete event reminder documents.
+   - `list` strictly enforces `isOwner(userId) && resource.data.uid == request.auth.uid` (or `isAdmin()`).
+   - `isValidEventReminder(incoming(), userId, eventId)` strictly enforces `uid == userId`, `eventId == eventId`, and exact string length bounds.
 
 ## 2. The "Dirty Dozen" Adversarial Payloads
 

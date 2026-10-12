@@ -2,8 +2,11 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   onSnapshot,
+  setDoc,
 } from 'firebase/firestore';
 import {
   auth,
@@ -31,6 +34,7 @@ import {
 import {
   CommandCategory,
   CommunityEventItem,
+  EventReminderItem,
   FaqItem,
   FeatureItem,
   GalleryItem,
@@ -88,6 +92,9 @@ interface AppContextValue {
   gallery: GalleryItem[];
   testimonials: TestimonialItem[];
   events: CommunityEventItem[];
+  eventReminders: EventReminderItem[];
+  remindedEventIds: string[];
+  toggleEventReminder: (event: CommunityEventItem) => Promise<boolean>;
   news: NewsArticleItem[];
   socialLinks: SocialLinkItem[];
   cmsLoading: boolean;
@@ -187,6 +194,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [events, setEvents] = useState<CommunityEventItem[]>(
     isCollectionMarkedCustomized('events') ? [] : SEED_EVENTS
   );
+  const [eventReminders, setEventReminders] = useState<EventReminderItem[]>([]);
   const [news, setNews] = useState<NewsArticleItem[]>(
     isCollectionMarkedCustomized('news') ? [] : SEED_NEWS
   );
@@ -247,6 +255,113 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshUserProfile = useCallback(async () => {
     await loadUserProfile(auth.currentUser);
   }, [loadUserProfile]);
+
+  // Real-time listener for logged-in user's event reminders in Firestore (/users/{uid}/event_reminders)
+  useEffect(() => {
+    if (!user?.uid) {
+      setEventReminders([]);
+      return;
+    }
+
+    const storageKey = `pro_players_event_reminders_${user.uid}`;
+    try {
+      const cachedRaw = localStorage.getItem(storageKey);
+      if (cachedRaw) {
+        const parsed = JSON.parse(cachedRaw) as EventReminderItem[];
+        if (Array.isArray(parsed)) {
+          setEventReminders(parsed);
+        }
+      }
+    } catch {
+      // Ignore storage read errors
+    }
+
+    const remindersCol = collection(db, 'users', user.uid, 'event_reminders');
+    const unsub = onSnapshot(
+      remindersCol,
+      (snap) => {
+        const docs: EventReminderItem[] = snap.docs.map((d) => {
+          const raw = d.data() as Record<string, unknown>;
+          return {
+            id: d.id,
+            uid: String(raw.uid ?? user.uid),
+            eventId: String(raw.eventId ?? d.id),
+            eventTitle: String(raw.eventTitle ?? ''),
+            eventDate: String(raw.eventDate ?? ''),
+            eventTime: String(raw.eventTime ?? ''),
+            createdAt: String(raw.createdAt ?? ''),
+          };
+        });
+        setEventReminders(docs);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(docs));
+        } catch {
+          // Ignore storage write errors
+        }
+      },
+      () => {
+        // Keep cached state if offline or restricted
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid]);
+
+  const remindedEventIds = React.useMemo(
+    () => eventReminders.map((r) => r.eventId || r.id),
+    [eventReminders]
+  );
+
+  const toggleEventReminder = useCallback(
+    async (event: CommunityEventItem): Promise<boolean> => {
+      const currentUser = auth.currentUser || user;
+      if (!currentUser?.uid) {
+        throw new Error('Please sign in to set event reminders.');
+      }
+
+      const uid = currentUser.uid;
+      const storageKey = `pro_players_event_reminders_${uid}`;
+      const isCurrentlyReminded = eventReminders.some(
+        (r) => r.eventId === event.id || r.id === event.id
+      );
+      const reminderRef = doc(db, 'users', uid, 'event_reminders', event.id);
+
+      if (isCurrentlyReminded) {
+        const nextList = eventReminders.filter(
+          (r) => r.eventId !== event.id && r.id !== event.id
+        );
+        setEventReminders(nextList);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(nextList));
+        } catch {
+          // Ignore
+        }
+        await deleteDoc(reminderRef);
+        return false;
+      } else {
+        const nowIso = new Date().toISOString();
+        const payload: Omit<EventReminderItem, 'id'> = {
+          uid,
+          eventId: event.id,
+          eventTitle: (event.title || 'Community Event').trim().slice(0, 120),
+          eventDate: (event.eventDate || 'TBA').trim().slice(0, 40),
+          eventTime: (event.eventTime || '18:00 UTC').trim().slice(0, 40),
+          createdAt: nowIso,
+        };
+        const nextItem: EventReminderItem = { id: event.id, ...payload };
+        const nextList = [...eventReminders, nextItem];
+        setEventReminders(nextList);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(nextList));
+        } catch {
+          // Ignore
+        }
+        await setDoc(reminderRef, payload);
+        return true;
+      }
+    },
+    [user, eventReminders]
+  );
 
   // Sync CSS variables and favicon when siteSettings updates
   useEffect(() => {
@@ -808,6 +923,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isOwnerEmail = isSuperAdminEmail(user?.email || userProfile?.email);
   const isAdmin = Boolean(isOwnerEmail || userProfile?.role === 'admin');
 
+  // Automatically connect & sync Discord (and other social URLs) from the Links section (socialLinks) across all pages
+  const syncedSiteSettings = React.useMemo<SiteSettings>(() => {
+    const findPlatformUrl = (platformName: string, checkPrimary = false): string | undefined => {
+      const match = socialLinks.find(
+        (l) =>
+          l.published !== false &&
+          (l.platform?.toLowerCase() === platformName.toLowerCase() ||
+            (checkPrimary && l.isPrimary)) &&
+          l.url?.trim() &&
+          l.url.trim() !== '#'
+      );
+      return match?.url.trim();
+    };
+
+    const discordFromLinks = findPlatformUrl('discord', true);
+    const youtubeFromLinks = findPlatformUrl('youtube');
+    const instagramFromLinks = findPlatformUrl('instagram');
+    const facebookFromLinks = findPlatformUrl('facebook');
+
+    return {
+      ...siteSettings,
+      discordUrl: discordFromLinks || siteSettings.discordUrl,
+      youtubeUrl: youtubeFromLinks || siteSettings.youtubeUrl,
+      instagramUrl: instagramFromLinks || siteSettings.instagramUrl,
+      facebookUrl: facebookFromLinks || siteSettings.facebookUrl,
+    };
+  }, [siteSettings, socialLinks]);
+
+  // Automatically update any event using the default placeholder Discord link to use the connected Discord link from the Links section
+  const syncedEvents = React.useMemo<CommunityEventItem[]>(() => {
+    const activeDiscord = syncedSiteSettings.discordUrl;
+    if (!activeDiscord) return events;
+    return events.map((evt) => {
+      const rawLink = (evt.discordLink || '').trim();
+      if (!rawLink || rawLink === 'https://discord.gg/proplayers') {
+        return {
+          ...evt,
+          discordLink: activeDiscord,
+        };
+      }
+      return evt;
+    });
+  }, [events, syncedSiteSettings.discordUrl]);
+
   return (
     <AppContext.Provider
       value={{
@@ -817,7 +976,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAdmin,
         isOwnerEmail,
         refreshUserProfile,
-        siteSettings,
+        siteSettings: syncedSiteSettings,
         stories,
         rules,
         commands,
@@ -829,7 +988,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         staff,
         gallery,
         testimonials,
-        events,
+        events: syncedEvents,
+        eventReminders,
+        remindedEventIds,
+        toggleEventReminder,
         news,
         socialLinks,
         cmsLoading,

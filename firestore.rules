@@ -422,6 +422,21 @@ service cloud.firestore {
       isValidTimestampString(data.updatedAt);
     }
 
+    function isValidEventReminder(data, userId, eventId) {
+      return data.keys().hasAll([
+        'uid', 'eventId', 'eventTitle', 'eventDate', 'eventTime', 'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid', 'eventId', 'eventTitle', 'eventDate', 'eventTime', 'createdAt'
+      ]) &&
+      data.uid is string && data.uid == userId && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+      data.eventId is string && data.eventId == eventId && data.eventId.size() >= 1 && data.eventId.size() <= 128 &&
+      data.eventTitle is string && data.eventTitle.size() >= 1 && data.eventTitle.size() <= 120 &&
+      data.eventDate is string && data.eventDate.size() >= 1 && data.eventDate.size() <= 40 &&
+      data.eventTime is string && data.eventTime.size() >= 1 && data.eventTime.size() <= 40 &&
+      isValidTimestampString(data.createdAt);
+    }
+
     // =========================================================================
     // 3. COLLECTION MATCH RULES
     // =========================================================================
@@ -457,6 +472,24 @@ service cloud.firestore {
       );
 
       allow delete: if isAdmin() && isValidId(userId);
+
+      // USER EVENT REMINDERS SUBCOLLECTION (/users/{userId}/event_reminders/{eventId})
+      match /event_reminders/{eventId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(eventId) && (isOwner(userId) || isAdmin());
+        allow list: if isSignedIn() && isValidId(userId) && ((isOwner(userId) && resource.data.uid == request.auth.uid) || isAdmin());
+        allow create: if isSignedIn() && isValidId(userId) && isValidId(eventId) && isOwner(userId) && isValidEventReminder(incoming(), userId, eventId);
+        allow update: if isSignedIn() && isValidId(userId) && isValidId(eventId) && isValidEventReminder(incoming(), userId, eventId) && (
+          (
+            isOwner(userId) &&
+            incoming().uid == existing().uid &&
+            incoming().eventId == existing().eventId &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['eventTitle', 'eventDate', 'eventTime'])
+          ) ||
+          isAdmin()
+        );
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(eventId) && (isOwner(userId) || isAdmin());
+      }
     }
 
     // SITE SETTINGS COLLECTION

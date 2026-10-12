@@ -1053,6 +1053,37 @@ export const AdminPage: React.FC = () => {
 
       markCollectionCustomized(activeCollection);
       await setDoc(doc(db, activeCollection, docId), cleanPayload);
+
+      // When a Discord (or YouTube/Instagram/Facebook) link is updated in the Links section (social_links),
+      // automatically propagate that URL to site_settings/main in Firestore so all connected links stay in sync!
+      if (activeCollection === 'social_links' && cleanPayload.published !== false) {
+        const platformLower = String(cleanPayload.platform || '').trim().toLowerCase();
+        const updatedUrl = String(cleanPayload.url || '').trim().slice(0, 300);
+        if (updatedUrl && updatedUrl !== '#') {
+          const settingsPatch: Partial<SiteSettings> = {};
+          if (platformLower === 'discord' || Boolean(cleanPayload.isPrimary)) {
+            settingsPatch.discordUrl = updatedUrl;
+          } else if (platformLower === 'youtube') {
+            settingsPatch.youtubeUrl = updatedUrl;
+          } else if (platformLower === 'instagram') {
+            settingsPatch.instagramUrl = updatedUrl;
+          } else if (platformLower === 'facebook') {
+            settingsPatch.facebookUrl = updatedUrl;
+          }
+
+          if (Object.keys(settingsPatch).length > 0) {
+            const { id: _ignoreId, ...currentSettingsData } = siteSettings;
+            const nextSettingsPayload: Omit<SiteSettings, 'id'> = {
+              ...currentSettingsData,
+              ...settingsPatch,
+              updatedAt: now,
+            };
+            await setDoc(doc(db, 'site_settings', 'main'), nextSettingsPayload);
+            setSettingsForm((prev) => ({ ...prev, ...settingsPatch, updatedAt: now }));
+          }
+        }
+      }
+
       await loadAdminCollection(activeCollection);
       await refreshCms();
 
@@ -1210,6 +1241,7 @@ export const AdminPage: React.FC = () => {
     setEditingDocId(null);
     setFormState({
       ...COLLECTION_SCHEMAS[colKey].defaultValues,
+      ...(colKey === 'events' ? { discordLink: siteSettings.discordUrl } : {}),
       order: collectionDocs.length + 1,
     });
     setIsFormOpen(true);

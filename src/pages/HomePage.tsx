@@ -45,6 +45,7 @@ const LEADERBOARD_CATEGORIES: LeaderboardCategory[] = [
 export const HomePage: React.FC = () => {
   const {
     siteSettings,
+    socialLinks,
     features,
     commands,
     leaderboards,
@@ -64,6 +65,18 @@ export const HomePage: React.FC = () => {
   const javaIpOnly = siteSettings.javaHost;
   const bedrockIp = siteSettings.bedrockHost;
   const bedrockPort = String(Number(siteSettings.bedrockPort) || 19132);
+
+  // Connected Discord URL from the Links section (social_links collection), automatically synced when changed
+  const connectedDiscordUrl =
+    socialLinks
+      .find(
+        (link) =>
+          link.published !== false &&
+          (link.platform?.toLowerCase() === 'discord' || link.isPrimary) &&
+          link.url?.trim() &&
+          link.url.trim() !== '#'
+      )
+      ?.url.trim() || siteSettings.discordUrl;
 
   // Unified Crossplay Server Status (GeyserMC / Floodgate connects Java & Bedrock to the same server)
   const serverOnline = Boolean(javaStatus.online || bedrockStatus.online);
@@ -175,9 +188,9 @@ export const HomePage: React.FC = () => {
                   )}
                 </button>
 
-                {siteSettings.discordUrl && (
+                {connectedDiscordUrl && (
                   <a
-                    href={siteSettings.discordUrl}
+                    href={connectedDiscordUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-sm sm:text-base font-bold text-white bg-[#5865F2] hover:bg-[#4752C4] transition-colors shadow-lg whitespace-nowrap shrink-0"

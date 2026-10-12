@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { deleteDoc, doc, setDoc } from 'firebase/firestore';
 import {
   Award,
+  Bell,
+  BellRing,
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
@@ -9,6 +12,7 @@ import {
   Edit3,
   ExternalLink,
   Layers,
+  LogIn,
   Plus,
   Sparkles,
   Trash2,
@@ -119,7 +123,15 @@ interface EventFormState {
 }
 
 export const CommunityEventsCalendar: React.FC = () => {
-  const { events, isAdmin, siteSettings } = useApp();
+  const {
+    events,
+    isAdmin,
+    siteSettings,
+    user,
+    userProfile,
+    remindedEventIds,
+    toggleEventReminder,
+  } = useApp();
 
   const todayKey = useMemo(() => getTodayDateKey(), []);
 
@@ -142,14 +154,15 @@ export const CommunityEventsCalendar: React.FC = () => {
   const [currentYear, setCurrentYear] = useState<number>(initialYearMonth.year);
   const [currentMonth, setCurrentMonth] = useState<number>(initialYearMonth.month);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
-  const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'past'>('all');
+  const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'past' | 'my_events'>('all');
+  const [togglingReminderId, setTogglingReminderId] = useState<string | null>(null);
 
   // Modal state for Admin creating/editing an event
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [feedbackBanner, setFeedbackBanner] = useState<{
-    type: 'success' | 'error';
+    type: 'success' | 'error' | 'auth_prompt';
     message: string;
   } | null>(null);
 
@@ -264,12 +277,16 @@ export const CommunityEventsCalendar: React.FC = () => {
     setSelectedDateKey(todayKey);
   };
 
+  const remindedSet = useMemo(() => new Set(remindedEventIds), [remindedEventIds]);
+
   // Filtered events for the schedule feed
   const displayedEvents = useMemo(() => {
     let list = [...events];
 
     if (selectedDateKey) {
       list = list.filter((e) => parseEventDateToKey(e.eventDate) === selectedDateKey);
+    } else if (viewFilter === 'my_events') {
+      list = list.filter((e) => remindedSet.has(e.id));
     } else if (viewFilter === 'upcoming') {
       list = list.filter((e) => !e.isPast);
     } else if (viewFilter === 'past') {
@@ -283,10 +300,59 @@ export const CommunityEventsCalendar: React.FC = () => {
       const keyB = parseEventDateToKey(b.eventDate) || b.eventDate;
       return a.isPast ? keyB.localeCompare(keyA) : keyA.localeCompare(keyB);
     });
-  }, [events, selectedDateKey, viewFilter]);
+  }, [events, selectedDateKey, viewFilter, remindedSet]);
 
   const upcomingCount = useMemo(() => events.filter((e) => !e.isPast).length, [events]);
   const pastCount = useMemo(() => events.filter((e) => e.isPast).length, [events]);
+  const myEventsCount = useMemo(
+    () => events.filter((e) => remindedSet.has(e.id)).length,
+    [events, remindedSet]
+  );
+
+  const handleToggleRemindMe = async (evt: CommunityEventItem) => {
+    if (!user) {
+      setFeedbackBanner({
+        type: 'auth_prompt',
+        message: `Sign in to your PRO PLAYERS account to enable "Remind me" for "${evt.title}" and track it in My Events.`,
+      });
+      return;
+    }
+
+    setTogglingReminderId(evt.id);
+    setFeedbackBanner(null);
+    try {
+      const enabled = await toggleEventReminder(evt);
+      setFeedbackBanner({
+        type: 'success',
+        message: enabled
+          ? `Reminder set for "${evt.title}" (${formatEventDateDisplay(evt.eventDate)} at ${evt.eventTime}). Saved to My Events!`
+          : `Removed "${evt.title}" from your My Events reminder list.`,
+      });
+    } catch (err) {
+      handleFirestoreError(
+        err,
+        OperationType.WRITE,
+        `users/${user.uid}/event_reminders/${evt.id}`
+      );
+      setFeedbackBanner({
+        type: 'error',
+        message: 'Could not update your event reminder preference in Firestore.',
+      });
+    } finally {
+      setTogglingReminderId(null);
+    }
+  };
+
+  const handleSelectEventOnCalendar = (evt: CommunityEventItem) => {
+    const key = parseEventDateToKey(evt.eventDate);
+    if (!key) return;
+    const [y, m] = key.split('-').map(Number);
+    if (y && m) {
+      setCurrentYear(y);
+      setCurrentMonth(m - 1);
+      setSelectedDateKey(key);
+    }
+  };
 
   // Open Admin Modal for creating a new event
   const openCreateModal = (prefillDateKey?: string) => {
@@ -466,6 +532,26 @@ export const CommunityEventsCalendar: React.FC = () => {
             Past Recaps ({pastCount})
           </button>
 
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedDateKey(null);
+              setViewFilter('my_events');
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+              !selectedDateKey && viewFilter === 'my_events'
+                ? 'bg-amber-400 text-slate-950 font-bold shadow-md'
+                : 'bg-slate-950 text-amber-300 hover:text-amber-200 border border-amber-500/35'
+            }`}
+          >
+            {myEventsCount > 0 ? (
+              <BellRing className="w-3.5 h-3.5" />
+            ) : (
+              <Bell className="w-3.5 h-3.5" />
+            )}
+            <span>My Events ({myEventsCount})</span>
+          </button>
+
           {selectedDateKey && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs font-mono text-emerald-300">
               <CalendarIcon className="w-3.5 h-3.5" />
@@ -507,24 +593,41 @@ export const CommunityEventsCalendar: React.FC = () => {
       {/* Status Feedback Banner */}
       {feedbackBanner && (
         <div
-          className={`p-4 rounded-xl border flex items-center justify-between gap-3 text-xs sm:text-sm ${
+          className={`p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm ${
             feedbackBanner.type === 'success'
               ? 'bg-emerald-500/10 border-emerald-500/35 text-emerald-200'
-              : 'bg-rose-500/10 border-rose-500/35 text-rose-200'
+              : feedbackBanner.type === 'auth_prompt'
+                ? 'bg-amber-500/10 border-amber-500/35 text-amber-200'
+                : 'bg-rose-500/10 border-rose-500/35 text-rose-200'
           }`}
         >
           <div className="flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 shrink-0" />
+            {feedbackBanner.type === 'auth_prompt' ? (
+              <BellRing className="w-4 h-4 shrink-0 text-amber-400" />
+            ) : (
+              <Sparkles className="w-4 h-4 shrink-0" />
+            )}
             <span>{feedbackBanner.message}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setFeedbackBanner(null)}
-            className="p-1 rounded-lg hover:bg-white/10 cursor-pointer"
-            aria-label="Dismiss notification"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {feedbackBanner.type === 'auth_prompt' && (
+              <Link
+                to="/account"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In / Register</span>
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setFeedbackBanner(null)}
+              className="p-1 rounded-lg hover:bg-white/10 cursor-pointer"
+              aria-label="Dismiss notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -581,6 +684,7 @@ export const CommunityEventsCalendar: React.FC = () => {
               const isSelected = selectedDateKey === cell.dateKey;
               const hasEvents = cell.dayEvents.length > 0;
               const hasUpcoming = cell.dayEvents.some((e) => !e.isPast);
+              const hasReminded = cell.dayEvents.some((e) => remindedSet.has(e.id));
 
               return (
                 <button
@@ -596,9 +700,11 @@ export const CommunityEventsCalendar: React.FC = () => {
                   } ${
                     isSelected
                       ? 'ring-2 ring-inset ring-emerald-400 bg-emerald-500/10'
-                      : hasUpcoming
-                        ? 'bg-emerald-500/5'
-                        : ''
+                      : hasReminded
+                        ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-400/35'
+                        : hasUpcoming
+                          ? 'bg-emerald-500/5'
+                          : ''
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
@@ -616,34 +722,50 @@ export const CommunityEventsCalendar: React.FC = () => {
                       {cell.dayNumber}
                     </span>
 
-                    {hasEvents && (
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
-                          hasUpcoming
-                            ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {cell.dayEvents.length}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {hasReminded && (
+                        <span
+                          className="p-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/35"
+                          title="Reminder set for an event on this date"
+                        >
+                          <BellRing className="w-2.5 h-2.5" />
+                        </span>
+                      )}
+                      {hasEvents && (
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                            hasUpcoming
+                              ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {cell.dayEvents.length}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Event Badges inside Calendar Cell */}
                   <div className="space-y-1 mt-1.5 w-full overflow-hidden">
-                    {cell.dayEvents.slice(0, 2).map((evt) => (
-                      <div
-                        key={evt.id}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium truncate border ${
-                          evt.isPast
-                            ? 'bg-slate-900/90 text-slate-400 border-slate-700/80'
-                            : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/35'
-                        }`}
-                        title={`${evt.title} (${evt.eventTime})`}
-                      >
-                        {evt.title}
-                      </div>
-                    ))}
+                    {cell.dayEvents.slice(0, 2).map((evt) => {
+                      const isEvtReminded = remindedSet.has(evt.id);
+                      return (
+                        <div
+                          key={evt.id}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium truncate border flex items-center gap-1 ${
+                            isEvtReminded
+                              ? 'bg-amber-500/20 text-amber-200 border-amber-400/45'
+                              : evt.isPast
+                                ? 'bg-slate-900/90 text-slate-400 border-slate-700/80'
+                                : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/35'
+                          }`}
+                          title={`${evt.title} (${evt.eventTime})${isEvtReminded ? ' • Reminder Set' : ''}`}
+                        >
+                          {isEvtReminded && <BellRing className="w-2.5 h-2.5 shrink-0 text-amber-300" />}
+                          <span className="truncate">{evt.title}</span>
+                        </div>
+                      );
+                    })}
                     {cell.dayEvents.length > 2 && (
                       <div className="text-[10px] font-mono text-emerald-400 pl-1">
                         +{cell.dayEvents.length - 2} more
@@ -663,6 +785,10 @@ export const CommunityEventsCalendar: React.FC = () => {
                 <span>Upcoming Event</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span>My Reminder Set</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
                 <span>Completed Event</span>
               </span>
@@ -678,21 +804,35 @@ export const CommunityEventsCalendar: React.FC = () => {
           <div className="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-5 space-y-4 shadow-xl">
             <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3.5">
               <div>
-                <div className="text-[11px] font-mono uppercase tracking-widest text-emerald-400">
-                  {selectedDateKey ? 'Selected Date Schedule' : 'Live Firestore Event Feed'}
+                <div
+                  className={`text-[11px] font-mono uppercase tracking-widest ${
+                    !selectedDateKey && viewFilter === 'my_events'
+                      ? 'text-amber-400'
+                      : 'text-emerald-400'
+                  }`}
+                >
+                  {selectedDateKey
+                    ? 'Selected Date Schedule'
+                    : viewFilter === 'my_events'
+                      ? user
+                        ? `Personal Schedule • ${userProfile?.minecraftUsername || user.email}`
+                        : 'Personal Event Reminders'
+                      : 'Live Firestore Event Feed'}
                 </div>
                 <h4 className="font-display text-lg font-bold text-white mt-0.5">
                   {selectedDateKey
                     ? formatEventDateDisplay(selectedDateKey)
-                    : viewFilter === 'upcoming'
-                      ? 'Upcoming Server Events'
-                      : viewFilter === 'past'
-                        ? 'Past Event Recaps'
-                        : 'All Scheduled Events'}
+                    : viewFilter === 'my_events'
+                      ? `My Events (${myEventsCount})`
+                      : viewFilter === 'upcoming'
+                        ? 'Upcoming Server Events'
+                        : viewFilter === 'past'
+                          ? 'Past Event Recaps'
+                          : 'All Scheduled Events'}
                 </h4>
               </div>
 
-              {selectedDateKey && (
+              {selectedDateKey ? (
                 <button
                   type="button"
                   onClick={() => setSelectedDateKey(null)}
@@ -700,35 +840,90 @@ export const CommunityEventsCalendar: React.FC = () => {
                 >
                   Show All
                 </button>
-              )}
+              ) : viewFilter === 'my_events' ? (
+                <button
+                  type="button"
+                  onClick={() => setViewFilter('upcoming')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 font-medium cursor-pointer"
+                >
+                  Browse All
+                </button>
+              ) : null}
             </div>
 
-            {displayedEvents.length === 0 ? (
+            {!selectedDateKey && viewFilter === 'my_events' && !user ? (
+              <div className="rounded-xl bg-slate-950/85 border border-amber-500/30 p-6 text-center space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/35 flex items-center justify-center text-amber-400 mx-auto">
+                  <BellRing className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h5 className="font-display text-base font-bold text-white">
+                    Sign In to Track Your Personal Events
+                  </h5>
+                  <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
+                    Log in to your PRO PLAYERS account to toggle &ldquo;Remind me&rdquo; on any upcoming server tournament and sync your personal schedule via Firestore.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                  <Link
+                    to="/account"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition-colors"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sign In / Create Account</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setViewFilter('upcoming')}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold cursor-pointer"
+                  >
+                    View Upcoming Events
+                  </button>
+                </div>
+              </div>
+            ) : displayedEvents.length === 0 ? (
               <div className="rounded-xl bg-slate-950/80 border border-slate-800/90 p-6 text-center space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 mx-auto">
-                  <CalendarIcon className="w-5 h-5" />
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto ${
+                    !selectedDateKey && viewFilter === 'my_events'
+                      ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400'
+                      : 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-400'
+                  }`}
+                >
+                  {!selectedDateKey && viewFilter === 'my_events' ? (
+                    <Bell className="w-5 h-5" />
+                  ) : (
+                    <CalendarIcon className="w-5 h-5" />
+                  )}
                 </div>
                 <div className="space-y-1">
                   <h5 className="font-display text-base font-bold text-white">
                     {selectedDateKey
                       ? `No events scheduled on ${formatEventDateDisplay(selectedDateKey)}`
-                      : 'No events match this filter'}
+                      : viewFilter === 'my_events'
+                        ? 'No event reminders saved yet'
+                        : 'No events match this filter'}
                   </h5>
                   <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
                     {selectedDateKey
                       ? 'Select another highlighted date on the calendar or view all upcoming tournaments.'
-                      : 'Check back soon or join our Discord server for flash event announcements.'}
+                      : viewFilter === 'my_events'
+                        ? 'Click "Remind me" on any event card in the calendar to save it to your personal My Events list in Firestore.'
+                        : 'Check back soon or join our Discord server for flash event announcements.'}
                   </p>
                 </div>
 
                 <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
-                  {selectedDateKey && (
+                  {(selectedDateKey || viewFilter === 'my_events') && (
                     <button
                       type="button"
-                      onClick={() => setSelectedDateKey(null)}
+                      onClick={() => {
+                        setSelectedDateKey(null);
+                        setViewFilter('upcoming');
+                      }}
                       className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold cursor-pointer"
                     >
-                      View All Upcoming Events
+                      Explore Upcoming Events
                     </button>
                   )}
                   {isAdmin && (
@@ -747,113 +942,155 @@ export const CommunityEventsCalendar: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4 max-h-[620px] overflow-y-auto pr-1">
-                {displayedEvents.map((evt) => (
-                  <div
-                    key={evt.id}
-                    className={`rounded-2xl border overflow-hidden transition-all ${
-                      evt.isPast
-                        ? 'bg-slate-950/75 border-slate-800/90'
-                        : 'bg-slate-950/95 border-emerald-500/35 shadow-lg'
-                    }`}
-                  >
-                    {evt.imageUrl && (
-                      <div className="aspect-[16/7] relative overflow-hidden bg-slate-950">
-                        <ResilientImage
-                          src={evt.imageUrl}
-                          alt={evt.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
-                              evt.isPast
-                                ? 'bg-slate-800/90 text-slate-300 border border-slate-700'
-                                : 'bg-emerald-400 text-slate-950'
-                            }`}
-                          >
-                            {evt.isPast ? 'Completed' : 'Upcoming Event'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                {displayedEvents.map((evt) => {
+                  const isReminded = remindedSet.has(evt.id);
+                  const isTogglingThis = togglingReminderId === evt.id;
 
-                    <div className="p-4 space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-                        <span className="inline-flex items-center gap-1.5 text-emerald-300">
-                          <CalendarIcon className="w-3.5 h-3.5" />
-                          <span>{formatEventDateDisplay(evt.eventDate)}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-amber-300">
-                          <Clock className="w-3 h-3" />
-                          <span>{evt.eventTime}</span>
-                        </span>
-                      </div>
+                  return (
+                    <div
+                      key={evt.id}
+                      className={`rounded-2xl border overflow-hidden transition-all ${
+                        isReminded
+                          ? 'bg-slate-950/95 border-amber-400/45 shadow-lg'
+                          : evt.isPast
+                            ? 'bg-slate-950/75 border-slate-800/90'
+                            : 'bg-slate-950/95 border-emerald-500/35 shadow-lg'
+                      }`}
+                    >
+                      {evt.imageUrl && (
+                        <div className="aspect-[16/7] relative overflow-hidden bg-slate-950">
+                          <ResilientImage
+                            src={evt.imageUrl}
+                            alt={evt.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+                          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
+                                evt.isPast
+                                  ? 'bg-slate-800/90 text-slate-300 border border-slate-700'
+                                  : 'bg-emerald-400 text-slate-950'
+                              }`}
+                            >
+                              {evt.isPast ? 'Completed' : 'Upcoming Event'}
+                            </span>
 
-                      <h5 className="font-display text-lg font-bold text-white leading-snug">
-                        {evt.title}
-                      </h5>
-
-                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                        {evt.description}
-                      </p>
-
-                      {evt.prize && (
-                        <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex items-center gap-2 text-xs text-amber-300 font-semibold">
-                          <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
-                          <span>Prize: {evt.prize}</span>
+                            {isReminded && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-amber-400 text-slate-950 shadow">
+                                <BellRing className="w-3 h-3" />
+                                <span>In My Events</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      {evt.isPast && evt.winnerSummary && (
-                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-2 text-xs font-mono text-emerald-300">
-                          <Award className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
-                          <span>{evt.winnerSummary}</span>
-                        </div>
-                      )}
-
-                      <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
-                        {evt.discordLink ? (
-                          <a
-                            href={evt.discordLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+                      <div className="p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectEventOnCalendar(evt)}
+                            className="inline-flex items-center gap-1.5 text-emerald-300 hover:text-emerald-200 cursor-pointer"
+                            title="Jump to this date on the calendar"
                           >
-                            <span>Join Event Channel</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        ) : (
-                          <span className="text-[11px] font-mono text-slate-500">
-                            In-Game Server Event
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            <span>{formatEventDateDisplay(evt.eventDate)}</span>
+                          </button>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-amber-300">
+                            <Clock className="w-3 h-3" />
+                            <span>{evt.eventTime}</span>
                           </span>
-                        )}
+                        </div>
 
-                        {isAdmin && (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(evt)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium cursor-pointer"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteEvent(evt)}
-                              disabled={deletingId === evt.id}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-medium cursor-pointer disabled:opacity-50"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>{deletingId === evt.id ? '...' : 'Delete'}</span>
-                            </button>
+                        <h5 className="font-display text-lg font-bold text-white leading-snug">
+                          {evt.title}
+                        </h5>
+
+                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                          {evt.description}
+                        </p>
+
+                        {evt.prize && (
+                          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex items-center gap-2 text-xs text-amber-300 font-semibold">
+                            <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
+                            <span>Prize: {evt.prize}</span>
                           </div>
                         )}
+
+                        {evt.isPast && evt.winnerSummary && (
+                          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-start gap-2 text-xs font-mono text-emerald-300">
+                            <Award className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                            <span>{evt.winnerSummary}</span>
+                          </div>
+                        )}
+
+                        <div className="pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRemindMe(evt)}
+                              disabled={isTogglingThis}
+                              aria-pressed={isReminded}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
+                                isReminded
+                                  ? 'bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/45'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80'
+                              }`}
+                            >
+                              {isReminded ? (
+                                <BellRing className="w-3.5 h-3.5 text-amber-400" />
+                              ) : (
+                                <Bell className="w-3.5 h-3.5 text-slate-400" />
+                              )}
+                              <span>
+                                {isTogglingThis
+                                  ? 'Saving...'
+                                  : isReminded
+                                    ? 'Reminder Set'
+                                    : 'Remind me'}
+                              </span>
+                            </button>
+
+                            {evt.discordLink && (
+                              <a
+                                href={evt.discordLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+                              >
+                                <span>Discord</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+
+                          {isAdmin && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(evt)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEvent(evt)}
+                                disabled={deletingId === evt.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-medium cursor-pointer disabled:opacity-50"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>{deletingId === evt.id ? '...' : 'Delete'}</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -298,12 +298,30 @@
         "updatedAt": { "type": "string", "maxLength": 60 }
       },
       "required": ["platform", "label", "url", "description", "colorHex", "isPrimary", "order", "published", "createdAt", "updatedAt"]
+    },
+    "EventReminder": {
+      "title": "EventReminder",
+      "description": "Logged-in user preference to be reminded of a specific community event.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "eventId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "eventTitle": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "eventDate": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "eventTime": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "createdAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["uid", "eventId", "eventTitle", "eventDate", "eventTime", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "User account documents containing private email and role."
+    },
+    "/users/{userId}/event_reminders/{eventId}": {
+      "schema": "EventReminder",
+      "description": "Per-user saved event reminder preferences for the Community Events calendar."
     },
     "/site_settings/{settingId}": {
       "schema": "SiteSettings",

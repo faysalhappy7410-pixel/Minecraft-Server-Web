@@ -235,6 +235,16 @@ export interface CommunityEventItem {
   updatedAt: string;
 }
 
+export interface EventReminderItem {
+  id: string;
+  uid: string;
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime: string;
+  createdAt: string;
+}
+
 export interface NewsArticleItem {
   id: string;
   title: string;
