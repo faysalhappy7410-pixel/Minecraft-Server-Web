@@ -160,7 +160,16 @@ export interface GameModeItem {
   updatedAt: string;
 }
 
+export type CanonicalLeaderboardCategory =
+  | 'PvP Masters'
+  | 'Builders'
+  | 'Challengers'
+  | 'Mini-Game Champions'
+  | 'Event Winners'
+  | 'Community Beta';
+
 export type LeaderboardCategory =
+  | CanonicalLeaderboardCategory
   | 'PvP Master'
   | 'Master Builder'
   | 'Minigame Champion'
@@ -175,6 +184,9 @@ export interface LeaderboardEntryItem {
   minecraftUsername: string;
   statLabel: string;
   statValue: string;
+  videoUrl?: string;
+  challengeTitle?: string;
+  challengeDescription?: string;
   published: boolean;
   createdAt: string;
   updatedAt: string;

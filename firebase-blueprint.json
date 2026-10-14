@@ -182,12 +182,28 @@
       "properties": {
         "category": {
           "type": "string",
-          "enum": ["PvP Master", "Master Builder", "Minigame Champion", "Play Time Legend", "Community Helper", "Event Winner"]
+          "enum": [
+            "PvP Masters",
+            "PvP Master",
+            "Challengers",
+            "Builders",
+            "Master Builder",
+            "Mini-Game Champions",
+            "Minigame Champion",
+            "Event Winners",
+            "Event Winner",
+            "Community Beta",
+            "Community Helper",
+            "Play Time Legend"
+          ]
         },
         "rank": { "type": "number" },
         "minecraftUsername": { "type": "string", "minLength": 3, "maxLength": 16 },
         "statLabel": { "type": "string", "minLength": 1, "maxLength": 60 },
         "statValue": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "videoUrl": { "type": "string", "maxLength": 300 },
+        "challengeTitle": { "type": "string", "maxLength": 160 },
+        "challengeDescription": { "type": "string", "maxLength": 800 },
         "published": { "type": "boolean" },
         "createdAt": { "type": "string", "maxLength": 60 },
         "updatedAt": { "type": "string", "maxLength": 60 }

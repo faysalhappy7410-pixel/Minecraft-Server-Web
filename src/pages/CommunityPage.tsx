@@ -21,26 +21,24 @@ import {
   Users,
   Volume2,
   X,
+  Flame,
+  Play,
+  Video,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import {
   GalleryItem,
   LeaderboardCategory,
+  LeaderboardEntryItem,
   NewsArticleItem,
   PublicPlayerProfile,
 } from '../types/cms';
 import { ResilientImage } from '../components/ResilientImage';
 import { MinecraftAvatar } from '../components/MinecraftAvatar';
 import { CommunityEventsCalendar } from '../components/CommunityEventsCalendar';
+import { PlayerProfileModal } from '../components/PlayerProfileModal';
+import { LeaderboardSection } from '../components/LeaderboardSection';
 
-const LEADERBOARD_CATEGORIES: LeaderboardCategory[] = [
-  'PvP Master',
-  'Master Builder',
-  'Minigame Champion',
-  'Play Time Legend',
-  'Community Helper',
-  'Event Winner',
-];
 
 export const CommunityPage: React.FC = () => {
   const {
@@ -69,11 +67,11 @@ export const CommunityPage: React.FC = () => {
     siteSettings.discordUrl?.trim() ||
     '';
 
-  const [activeLeaderboardTab, setActiveLeaderboardTab] =
-    useState<LeaderboardCategory>('PvP Master');
   const [selectedGalleryCategory, setSelectedGalleryCategory] = useState<string>('All');
   const [lightboxItem, setLightboxItem] = useState<GalleryItem | null>(null);
   const [activeArticle, setActiveArticle] = useState<NewsArticleItem | null>(null);
+  const [selectedPlayerEntry, setSelectedPlayerEntry] =
+    useState<LeaderboardEntryItem | null>(null);
 
   // Close modals on Escape key
   useEffect(() => {
@@ -81,17 +79,12 @@ export const CommunityPage: React.FC = () => {
       if (e.key === 'Escape') {
         setLightboxItem(null);
         setActiveArticle(null);
+        setSelectedPlayerEntry(null);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
-
-  const currentLeaderboardEntries = leaderboards
-    .filter((entry) => entry.category === activeLeaderboardTab)
-    .sort((a, b) => a.rank - b.rank);
-
-  const topThreePlayers = currentLeaderboardEntries.slice(0, 3);
 
   const galleryCategories = [
     'All',
@@ -272,227 +265,14 @@ export const CommunityPage: React.FC = () => {
       </section>
 
       {/* 2. Top Players Podium & Staff Members Visual Highlight Section */}
-      <section aria-labelledby="leaderboards-heading" className="space-y-10">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-mono uppercase tracking-widest text-emerald-400">
-              02. Hall of Fame &amp; Server Leadership
-            </p>
-            <h2
-              id="leaderboards-heading"
-              className="font-display text-2xl sm:text-3xl font-bold text-white mt-1"
-            >
-              Top Players &amp; Staff Showcase
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Season champions verified by the PRO PLAYERS team across PvP, building, and survival.
-            </p>
-          </div>
-
-          <div
-            role="tablist"
-            aria-label="Leaderboard Categories"
-            className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl bg-slate-900 border border-slate-800"
-          >
-            {LEADERBOARD_CATEGORIES.map((category) => (
-              <button
-                key={category}
-                type="button"
-                role="tab"
-                aria-selected={activeLeaderboardTab === category}
-                onClick={() => setActiveLeaderboardTab(category)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                  activeLeaderboardTab === category
-                    ? 'bg-emerald-400 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Podium Visual Highlight Cards for Top 3 Players */}
-        {topThreePlayers.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {topThreePlayers.map((entry) => {
-              const isFirst = entry.rank === 1;
-              const isSecond = entry.rank === 2;
-              return (
-                <div
-                  key={entry.id}
-                  className={`rounded-2xl p-6 flex flex-col justify-between space-y-5 border transition-colors ${
-                    isFirst
-                      ? 'bg-gradient-to-b from-amber-500/15 via-slate-900/90 to-slate-900/90 border-amber-400/50 shadow-xl'
-                      : isSecond
-                        ? 'bg-slate-900/85 border-slate-600/60'
-                        : 'bg-slate-900/85 border-amber-700/50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3.5">
-                      <MinecraftAvatar username={entry.minecraftUsername} size="lg" />
-                      <div>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-mono font-bold ${
-                            isFirst
-                              ? 'bg-amber-400 text-slate-950'
-                              : isSecond
-                                ? 'bg-slate-300 text-slate-950'
-                                : 'bg-amber-700 text-white'
-                          }`}
-                        >
-                          <Crown className="w-3 h-3" />
-                          <span>RANK #{entry.rank}</span>
-                        </span>
-                        <h3 className="font-display text-xl font-extrabold text-white mt-1.5">
-                          {entry.minecraftUsername}
-                        </h3>
-                        <p className="text-xs text-slate-400">{entry.category}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-slate-950/85 border border-slate-800/90 flex items-center justify-between font-mono">
-                    <span className="text-xs text-slate-400 font-sans">{entry.statLabel}</span>
-                    <span className="text-base font-bold text-emerald-300 tabular-nums">
-                      {entry.statValue}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Full Leaderboard Table or Stylish Placeholder Layout */}
-        {currentLeaderboardEntries.length === 0 ? (
-          <div className="space-y-6">
-            {/* Podium Layout Preview Slots so users can see the Leaderboard structure */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((slotRank) => {
-                const isFirst = slotRank === 1;
-                const isSecond = slotRank === 2;
-                return (
-                  <div
-                    key={slotRank}
-                    className={`rounded-2xl p-6 flex flex-col justify-between space-y-5 border border-dashed ${
-                      isFirst
-                        ? 'bg-gradient-to-b from-amber-500/10 via-slate-900/80 to-slate-900/80 border-amber-400/40'
-                        : isSecond
-                          ? 'bg-slate-900/75 border-slate-700'
-                          : 'bg-slate-900/75 border-amber-700/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 shrink-0">
-                        <Trophy
-                          className={`w-6 h-6 ${
-                            isFirst
-                              ? 'text-amber-400/80'
-                              : isSecond
-                                ? 'text-slate-300/80'
-                                : 'text-amber-600/80'
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-mono font-bold ${
-                            isFirst
-                              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
-                              : isSecond
-                                ? 'bg-slate-300/20 text-slate-200 border border-slate-400/30'
-                                : 'bg-amber-700/25 text-amber-400 border border-amber-600/30'
-                          }`}
-                        >
-                          <Crown className="w-3 h-3" />
-                          <span>RANK #{slotRank} SLOT</span>
-                        </span>
-                        <h3 className="font-display text-lg font-bold text-slate-300 mt-1.5">
-                          Awaiting Champion
-                        </h3>
-                        <p className="text-xs text-slate-500">{activeLeaderboardTab}</p>
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between font-mono text-xs">
-                      <span className="text-slate-500 font-sans">Season Score</span>
-                      <span className="text-slate-400 font-bold">---</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Stylish Status Placeholder Banner */}
-            <div className="rounded-2xl bg-slate-900/85 border border-slate-800/90 p-8 text-center space-y-3 shadow-lg">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 mx-auto">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-300">
-                <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Leaderboard updating soon</span>
-              </div>
-              <h3 className="font-display text-xl sm:text-2xl font-bold text-white">
-                No leaderboard stats available yet
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-                Season IV rankings for <strong className="text-white">{activeLeaderboardTab}</strong>{' '}
-                are currently being tracked. Top player scores and statistics will appear in the
-                podium slots above as matches and community milestones are verified.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl bg-slate-900/80 border border-slate-800/90 overflow-hidden">
-            <div className="divide-y divide-slate-800/80">
-              {currentLeaderboardEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-slate-800/30 transition-colors"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div
-                      className={`w-9 h-9 rounded-lg font-mono font-bold text-sm flex items-center justify-center shrink-0 tabular-nums ${
-                        entry.rank === 1
-                          ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
-                          : entry.rank === 2
-                            ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40'
-                            : entry.rank === 3
-                              ? 'bg-amber-700/25 text-amber-400 border border-amber-600/40'
-                              : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      #{entry.rank}
-                    </div>
-
-                    <MinecraftAvatar username={entry.minecraftUsername} size="sm" />
-
-                    <div className="min-w-0">
-                      <div className="font-display font-bold text-white truncate flex items-center gap-2">
-                        <span>{entry.minecraftUsername}</span>
-                        {entry.rank === 1 && (
-                          <Crown
-                            className="w-4 h-4 text-amber-400 shrink-0"
-                            aria-label="Rank 1 Champion"
-                          />
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-400">{entry.category}</div>
-                    </div>
-                  </div>
-
-                  <div className="text-right font-mono tabular-nums shrink-0">
-                    <div className="text-sm font-bold text-emerald-300">{entry.statValue}</div>
-                    <div className="text-[11px] text-slate-400 font-sans">{entry.statLabel}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <section aria-labelledby="leaderboards-heading" className="space-y-12">
+        <LeaderboardSection
+          entries={leaderboards}
+          onSelectPlayer={(player) => setSelectedPlayerEntry(player)}
+          defaultFilter="All"
+          title="Competitive Hall of Fame"
+          subtitle="Crossplay Season IV rankings, verified trial conquerors, and server legends. Filter by category or explore all divisions."
+        />
 
         {/* Staff Team Cards */}
         <div className="space-y-5 pt-4">
@@ -910,31 +690,60 @@ export const CommunityPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {featuredPublicProfiles.map((player) => (
-            <div
-              key={player.uid}
-              className="rounded-2xl bg-slate-900/75 border border-slate-800/90 p-5 flex flex-col justify-between space-y-4"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <MinecraftAvatar
-                    username={player.minecraftUsername}
-                    customAvatarUrl={player.avatarUrl}
-                    size="md"
-                  />
-                  <div className="min-w-0">
-                    <h3 className="font-display text-base font-bold text-white truncate">
-                      {player.minecraftUsername}
-                    </h3>
-                    {player.badges && player.badges.length > 0 && (
-                      <div className="text-xs text-emerald-400 truncate">
-                        {player.badges.join(' · ')}
-                      </div>
-                    )}
+          {featuredPublicProfiles.map((player) => {
+            const matchedLb = leaderboards.find(
+              (l) => l.minecraftUsername.toLowerCase() === player.minecraftUsername.toLowerCase()
+            );
+            return (
+              <div
+                key={player.uid}
+                onClick={() => {
+                  if (matchedLb) {
+                    setSelectedPlayerEntry(matchedLb);
+                  } else {
+                    setSelectedPlayerEntry({
+                      id: `temp_${player.uid}`,
+                      category: 'Community Helper',
+                      rank: 1,
+                      minecraftUsername: player.minecraftUsername,
+                      statLabel: 'Community Standing',
+                      statValue: 'Verified Citizen',
+                      published: true,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    });
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (matchedLb) setSelectedPlayerEntry(matchedLb);
+                  }
+                }}
+                className="rounded-2xl bg-slate-900/75 border border-slate-800/90 hover:border-emerald-500/50 hover:bg-slate-800/40 p-5 flex flex-col justify-between space-y-4 transition-all cursor-pointer group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <MinecraftAvatar
+                      username={player.minecraftUsername}
+                      customAvatarUrl={player.avatarUrl}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <h3 className="font-display text-base font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
+                        {player.minecraftUsername}
+                      </h3>
+                      {player.badges && player.badges.length > 0 && (
+                        <div className="text-xs text-emerald-400 truncate">
+                          {player.badges.join(' · ')}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">{player.bio}</p>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">{player.bio}</p>
-              </div>
 
               <div className="pt-3 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
                 {player.discordUsername && (
@@ -975,7 +784,8 @@ export const CommunityPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       </section>
 
@@ -1075,6 +885,12 @@ export const CommunityPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Accessible Full Player Profile Modal */}
+      <PlayerProfileModal
+        entry={selectedPlayerEntry}
+        onClose={() => setSelectedPlayerEntry(null)}
+      />
     </div>
   );
 };

@@ -250,11 +250,12 @@ export const InformationPage: React.FC = () => {
                 key={mode.id}
                 className="rounded-2xl bg-slate-900/85 border border-slate-800/90 hover:border-emerald-500/40 overflow-hidden flex flex-col sm:flex-row transition-colors shadow-lg"
               >
-                <div className="sm:w-52 aspect-video sm:aspect-auto relative shrink-0 bg-slate-950">
+                <div className="w-full sm:w-60 aspect-[16/9] sm:aspect-auto sm:self-stretch relative shrink-0 overflow-hidden bg-slate-950">
                   <ResilientImage
                     src={mode.imageUrl}
                     alt={mode.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-center"
+                    style={{ objectFit: 'cover', objectPosition: 'center' }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent sm:hidden" />
                 </div>

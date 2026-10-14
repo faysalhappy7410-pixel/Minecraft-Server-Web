@@ -22,6 +22,7 @@ import { auth } from '../lib/firebase';
 import { useApp } from '../context/AppContext';
 import { ResilientImage } from './ResilientImage';
 import { MinecraftAvatar } from './MinecraftAvatar';
+import { normalizeAssetUrl, FALLBACK_BACKGROUND_URL } from '../lib/assetHelper';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, userProfile, isAdmin, siteSettings, news } = useApp();
@@ -123,26 +124,42 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               cta: 'bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-200 border-emerald-400/40',
             };
 
+  const effectiveBackgroundUrl = normalizeAssetUrl(
+    siteSettings.backgroundImageUrl,
+    FALLBACK_BACKGROUND_URL
+  );
+
   return (
     <div className="min-h-screen flex flex-col relative bg-[#070B10] text-slate-100">
-      {/* Full-Page Minecraft Background with Balanced Readability Overlay */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        {siteSettings.backgroundImageUrl && (
-          <img
-            src={siteSettings.backgroundImageUrl}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover opacity-80 scale-102 saturate-115 contrast-105"
-          />
-        )}
+      {/* Full-Page Minecraft Background with Robust Responsive CSS Properties */}
+      <div
+        className="fixed inset-0 w-full h-full z-0 pointer-events-none overflow-hidden select-none"
+        aria-hidden="true"
+      >
+        <img
+          src={effectiveBackgroundUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (target.src !== FALLBACK_BACKGROUND_URL) {
+              target.src = FALLBACK_BACKGROUND_URL;
+            }
+          }}
+          className="w-full h-full min-w-full min-h-full object-cover object-center opacity-85 scale-102 saturate-115 contrast-105 absolute inset-0"
+          style={{
+            objectFit: 'cover',
+            objectPosition: 'center center',
+          }}
+        />
         <div
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse at 50% 25%, rgba(7, 11, 16, 0.22) 0%, rgba(7, 11, 16, 0.52) 65%, rgba(7, 11, 16, 0.85) 100%)',
+              'radial-gradient(ellipse at 50% 25%, rgba(7, 11, 16, 0.22) 0%, rgba(7, 11, 16, 0.55) 65%, rgba(7, 11, 16, 0.90) 100%)',
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#070B10]/30 via-[#070B10]/50 to-[#070B10]/85" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#070B10]/35 via-[#070B10]/55 to-[#070B10]/90" />
       </div>
 
       {/* Top Navigation Bar — Clean 3-Zone Navigation Structure */}

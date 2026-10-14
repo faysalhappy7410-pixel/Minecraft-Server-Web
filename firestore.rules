@@ -272,20 +272,30 @@ service cloud.firestore {
       ]) &&
       data.keys().hasOnly([
         'category', 'rank', 'minecraftUsername', 'statLabel', 'statValue',
+        'videoUrl', 'challengeTitle', 'challengeDescription',
         'published', 'createdAt', 'updatedAt'
       ]) &&
       data.category is string && (
+        data.category == 'PvP Masters' ||
         data.category == 'PvP Master' ||
+        data.category == 'Challengers' ||
+        data.category == 'Builders' ||
         data.category == 'Master Builder' ||
+        data.category == 'Mini-Game Champions' ||
         data.category == 'Minigame Champion' ||
-        data.category == 'Play Time Legend' ||
+        data.category == 'Event Winners' ||
+        data.category == 'Event Winner' ||
+        data.category == 'Community Beta' ||
         data.category == 'Community Helper' ||
-        data.category == 'Event Winner'
+        data.category == 'Play Time Legend'
       ) &&
       data.rank is number && data.rank >= 1 && data.rank <= 100 &&
       data.minecraftUsername is string && data.minecraftUsername.size() >= 3 && data.minecraftUsername.size() <= 16 &&
       data.statLabel is string && data.statLabel.size() >= 1 && data.statLabel.size() <= 60 &&
       data.statValue is string && data.statValue.size() >= 1 && data.statValue.size() <= 60 &&
+      (!('videoUrl' in data) || (data.videoUrl is string && data.videoUrl.size() <= 300)) &&
+      (!('challengeTitle' in data) || (data.challengeTitle is string && data.challengeTitle.size() <= 160)) &&
+      (!('challengeDescription' in data) || (data.challengeDescription is string && data.challengeDescription.size() <= 800)) &&
       data.published is bool &&
       isValidTimestampString(data.createdAt) &&
       isValidTimestampString(data.updatedAt);

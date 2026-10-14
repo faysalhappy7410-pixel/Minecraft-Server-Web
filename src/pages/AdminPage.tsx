@@ -365,27 +365,54 @@ const COLLECTION_SCHEMAS: Record<
         label: 'Leaderboard Category',
         type: 'select',
         options: [
+          'PvP Masters',
+          'Builders',
+          'Challengers',
+          'Mini-Game Champions',
+          'Event Winners',
+          'Community Beta',
           'PvP Master',
           'Master Builder',
           'Minigame Champion',
-          'Play Time Legend',
-          'Community Helper',
           'Event Winner',
+          'Community Helper',
+          'Play Time Legend',
         ],
         required: true,
       },
       { name: 'rank', label: 'Rank Position (1 - 100)', type: 'number', required: true },
       { name: 'minecraftUsername', label: 'Minecraft Username (Select Registered User or Enter)', type: 'text', required: true, maxLength: 16 },
-      { name: 'statLabel', label: 'Stat Label (e.g. Arena Duels Won)', type: 'text', required: true, maxLength: 60 },
-      { name: 'statValue', label: 'Stat Value (e.g. 412 Wins)', type: 'text', required: true, maxLength: 60 },
+      { name: 'statLabel', label: 'Stat Label (e.g. Arena Duels Won or Challenge Time)', type: 'text', required: true, maxLength: 60 },
+      { name: 'statValue', label: 'Stat Value (e.g. 412 Wins or 4m 12s)', type: 'text', required: true, maxLength: 60 },
+      {
+        name: 'challengeTitle',
+        label: 'Challenge Title (For Challengers, e.g. Hardcore Nether Wither Solo)',
+        type: 'text',
+        maxLength: 160,
+      },
+      {
+        name: 'challengeDescription',
+        label: 'Challenge Description & Criteria Completed (For Challengers)',
+        type: 'textarea',
+        maxLength: 800,
+      },
+      {
+        name: 'videoUrl',
+        label: 'Optional Proof / Video Link (YouTube, Twitch, or Stream URL for all categories)',
+        type: 'text',
+        maxLength: 300,
+      },
       { name: 'published', label: 'Published Publicly', type: 'boolean' },
     ],
     defaultValues: {
-      category: 'PvP Master',
+      category: 'PvP Masters',
       rank: 1,
       minecraftUsername: '',
       statLabel: 'Arena Duels Won',
-      statValue: '100 Wins',
+      statValue: '412 Wins · 89% WR',
+      challengeTitle: '',
+      challengeDescription: '',
+      videoUrl: '',
       published: true,
     },
   },
@@ -1830,8 +1857,8 @@ export const AdminPage: React.FC = () => {
                       Modify Leaderboard Rankings &amp; Stats
                     </div>
                     <p className="text-xs text-slate-400">
-                      Select registered database users or enter Minecraft usernames to update PvP,
-                      Builder, and Playtime rankings.
+                      Manage Challengers, PvP, and Builder rankings with custom challenge descriptions,
+                      stat records, and optional video proof links.
                     </p>
                   </button>
 
@@ -2871,6 +2898,32 @@ export const AdminPage: React.FC = () => {
                                 {activeCollection === 'rules' && Boolean(item.category) && (
                                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 font-mono text-[11px] font-semibold text-emerald-300">
                                     {String(item.category)}
+                                  </span>
+                                )}
+
+                                {activeCollection === 'leaderboards' && Boolean(item.category) && (
+                                  <span
+                                    className={`px-2 py-0.5 rounded font-mono text-[11px] font-semibold ${
+                                      item.category === 'PvP Masters' || item.category === 'PvP Master'
+                                        ? 'bg-red-500/15 border border-red-500/40 text-red-300'
+                                        : item.category === 'Challengers'
+                                          ? 'bg-purple-500/20 border border-purple-400/40 text-amber-300'
+                                          : item.category === 'Builders' || item.category === 'Master Builder'
+                                            ? 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-300'
+                                            : item.category === 'Mini-Game Champions' || item.category === 'Minigame Champion'
+                                              ? 'bg-yellow-500/15 border border-yellow-500/40 text-yellow-300'
+                                              : item.category === 'Event Winners' || item.category === 'Event Winner'
+                                                ? 'bg-amber-500/15 border border-amber-500/40 text-amber-300'
+                                                : 'bg-teal-500/15 border border-teal-500/40 text-teal-300'
+                                    }`}
+                                  >
+                                    {String(item.category)}
+                                  </span>
+                                )}
+
+                                {activeCollection === 'leaderboards' && Boolean(item.videoUrl) && (
+                                  <span className="px-2 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 font-mono text-[10px] font-semibold text-rose-300">
+                                    Video Attached
                                   </span>
                                 )}
 

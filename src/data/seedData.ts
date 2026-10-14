@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
+  CanonicalLeaderboardCategory,
   CommunityEventItem,
   FaqItem,
   FeatureItem,
@@ -20,10 +21,10 @@ import {
 } from '../types/cms';
 
 export const OFFICIAL_LOGO_ASSET = '/pro-players-logo.png';
-export const THEME_REFERENCE_ASSET = '/src/assets/images/pro_players_ender_bg_1791687106870.jpg';
-export const BUILD_CITADEL_ASSET = '/src/assets/images/build_citadel_showcase_1791684771545.jpg';
-export const BUILD_ARENA_ASSET = '/src/assets/images/build_cyber_arena_1791684782779.jpg';
-export const BUILD_GARDENS_ASSET = '/src/assets/images/build_elysium_gardens_1791684793830.jpg';
+export const THEME_REFERENCE_ASSET = '/assets/images/pro_players_ender_bg_1791687106870.jpg';
+export const BUILD_CITADEL_ASSET = '/assets/images/build_citadel_showcase_1791684771545.jpg';
+export const BUILD_ARENA_ASSET = '/assets/images/build_cyber_arena_1791684782779.jpg';
+export const BUILD_GARDENS_ASSET = '/assets/images/build_elysium_gardens_1791684793830.jpg';
 
 const NOW_ISO = '2026-10-10T19:00:00.000Z';
 
@@ -664,21 +665,44 @@ export const SEED_GAME_MODES: GameModeItem[] = [
   },
 ];
 
+export function normalizeLeaderboardCategory(cat?: string): CanonicalLeaderboardCategory {
+  if (!cat) return 'PvP Masters';
+  const trimmed = cat.trim();
+  if (trimmed === 'PvP Masters' || trimmed === 'PvP Master') return 'PvP Masters';
+  if (trimmed === 'Challengers' || trimmed.toLowerCase().includes('challenger')) return 'Challengers';
+  if (trimmed === 'Builders' || trimmed === 'Master Builder') return 'Builders';
+  if (trimmed === 'Mini-Game Champions' || trimmed === 'Minigame Champion') return 'Mini-Game Champions';
+  if (trimmed === 'Event Winners' || trimmed === 'Event Winner') return 'Event Winners';
+  if (trimmed === 'Community Beta' || trimmed === 'Community Helper' || trimmed === 'Play Time Legend') return 'Community Beta';
+  return 'PvP Masters';
+}
+
+export const CANONICAL_LEADERBOARD_CATEGORIES: CanonicalLeaderboardCategory[] = [
+  'PvP Masters',
+  'Builders',
+  'Challengers',
+  'Mini-Game Champions',
+  'Event Winners',
+  'Community Beta',
+];
+
 export const SEED_LEADERBOARDS: LeaderboardEntryItem[] = [
+  // 1. PvP Masters (Top Competitive Category)
   {
     id: 'lb_pvp_1',
-    category: 'PvP Master',
+    category: 'PvP Masters',
     rank: 1,
     minecraftUsername: 'VortexBlade_',
     statLabel: 'Arena Duels Won',
     statValue: '412 Wins · 89% WR',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     published: true,
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,
   },
   {
     id: 'lb_pvp_2',
-    category: 'PvP Master',
+    category: 'PvP Masters',
     rank: 2,
     minecraftUsername: 'NetherKnight99',
     statLabel: 'Arena Duels Won',
@@ -689,7 +713,7 @@ export const SEED_LEADERBOARDS: LeaderboardEntryItem[] = [
   },
   {
     id: 'lb_pvp_3',
-    category: 'PvP Master',
+    category: 'PvP Masters',
     rank: 3,
     minecraftUsername: 'CrimsonAegis',
     statLabel: 'Arena Duels Won',
@@ -698,35 +722,142 @@ export const SEED_LEADERBOARDS: LeaderboardEntryItem[] = [
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,
   },
+
+  // 2. Builders (Creative & Architectural Citadels)
   {
     id: 'lb_build_1',
-    category: 'Master Builder',
+    category: 'Builders',
     rank: 1,
     minecraftUsername: 'AetheriusMC',
-    statLabel: 'Featured Mega Builds',
-    statValue: '14 Showcase Awards',
+    statLabel: 'Showcase Awards',
+    statValue: '14 Citadel Laurels',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     published: true,
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,
   },
   {
+    id: 'lb_build_2',
+    category: 'Builders',
+    rank: 2,
+    minecraftUsername: 'PixelCraftsman',
+    statLabel: 'Realm Mega-Structures',
+    statValue: '9 Landmark Hubs',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+  {
+    id: 'lb_build_3',
+    category: 'Builders',
+    rank: 3,
+    minecraftUsername: 'StoneCarver_',
+    statLabel: 'Cathedral Replicas',
+    statValue: '7 Gothic Citadels',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+
+  // 3. Challengers (Verified Challengers — Placed in the Middle)
+  {
+    id: 'lb_chal_1',
+    category: 'Challengers',
+    rank: 1,
+    minecraftUsername: 'VortexBlade_',
+    statLabel: 'Hardcore Wither Solo Time',
+    statValue: '4m 12s · Flawless',
+    challengeTitle: 'Hardcore Nether Wither Solo Arena',
+    challengeDescription: 'Defeated the Nether Wither in Hardcore mode without golden apples or totems inside the obsidian colosseum in under 5 minutes.',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+  {
+    id: 'lb_chal_2',
+    category: 'Challengers',
+    rank: 2,
+    minecraftUsername: 'NetherKnight99',
+    statLabel: '100-Day Nether Only Survival',
+    statValue: '100 In-Game Days',
+    challengeTitle: 'Ultra Hardcore 100-Day Nomad Trial',
+    challengeDescription: 'Survived 100 continuous days across the hostile Nether wastes with natural health regeneration disabled.',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+
+  // 4. Mini-Game Champions
+  {
     id: 'lb_mini_1',
-    category: 'Minigame Champion',
+    category: 'Mini-Game Champions',
     rank: 1,
     minecraftUsername: 'SwiftParkour',
     statLabel: 'Arcade Tournament Crowns',
-    statValue: '94 Crowns',
+    statValue: '94 Crowns · Speedrun Champ',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     published: true,
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,
   },
   {
-    id: 'lb_time_1',
-    category: 'Play Time Legend',
+    id: 'lb_mini_2',
+    category: 'Mini-Game Champions',
+    rank: 2,
+    minecraftUsername: 'EnderRunner_X',
+    statLabel: 'TNT Run & Spleef Victories',
+    statValue: '78 Victories',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+
+  // 5. Event Winners
+  {
+    id: 'lb_event_1',
+    category: 'Event Winners',
+    rank: 1,
+    minecraftUsername: 'FrostBite_King',
+    statLabel: 'Seasonal Tournaments Won',
+    statValue: '5 Gold Trophies',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+  {
+    id: 'lb_event_2',
+    category: 'Event Winners',
+    rank: 2,
+    minecraftUsername: 'ShadowWalker_9',
+    statLabel: 'Ender Dragon Rush Cup',
+    statValue: 'Champion Title',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+
+  // 6. Community Beta
+  {
+    id: 'lb_beta_1',
+    category: 'Community Beta',
     rank: 1,
     minecraftUsername: 'RedstoneSage',
-    statLabel: 'Active Community Hours',
-    statValue: '1,240 Hours',
+    statLabel: 'Pioneer Beta Score',
+    statValue: '1,420 Pts · Lead Tester',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+  {
+    id: 'lb_beta_2',
+    category: 'Community Beta',
+    rank: 2,
+    minecraftUsername: 'GlitchHunter_Z',
+    statLabel: 'Beta Bug Audits Verified',
+    statValue: '86 Verified Patches',
     published: true,
     createdAt: NOW_ISO,
     updatedAt: NOW_ISO,

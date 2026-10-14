@@ -751,23 +751,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const javaPromise = (async () => {
         try {
-          const data = await fetchWithTimeout(
-            `https://api.mcstatus.io/v2/status/java/${encodeURIComponent(javaAddress)}`
-          );
-          const isOnline = Boolean(data?.online);
-          const motdClean =
-            data?.motd?.clean?.join(' ')?.trim() ||
-            (isOnline
-              ? 'PRO PLAYERS — Java Edition Realm Online'
-              : 'Server is currently offline or in free-hosting standby mode.');
+          let isOnline = false;
+          let playersOnline = 0;
+          let playersMax = 100;
+          let version = siteSettings.minecraftVersion;
+          let motdClean = 'PRO PLAYERS — Java Edition Realm Online';
+          let detectedPort = javaPort;
+
+          // 1. Try public REST API with native CORS support: api.mcsrvstat.us/2/
+          try {
+            const data = await fetchWithTimeout(
+              `https://api.mcsrvstat.us/2/${encodeURIComponent(javaAddress)}`
+            );
+            if (data && typeof data.online === 'boolean') {
+              isOnline = Boolean(data.online);
+              if (data.port) detectedPort = Number(data.port) || javaPort;
+              if (isOnline) {
+                playersOnline = Number(data.players?.online ?? 0);
+                playersMax = Number(data.players?.max ?? 100);
+                if (data.version) version = String(data.version);
+                if (Array.isArray(data.motd?.clean) && data.motd.clean.length > 0) {
+                  motdClean = data.motd.clean.join(' ').trim();
+                }
+              }
+            }
+          } catch {
+            // 2. Secondary fallback: api.minetools.eu/ping
+            try {
+              const mtData = await fetchWithTimeout(
+                `https://api.minetools.eu/ping/${encodeURIComponent(javaHost)}/${javaPort}`
+              );
+              if (mtData && !mtData.error) {
+                isOnline = true;
+                playersOnline = Number(mtData.players?.online ?? 0);
+                playersMax = Number(mtData.players?.max ?? 100);
+                if (mtData.version?.name) version = String(mtData.version.name);
+                if (typeof mtData.description === 'string') {
+                  motdClean = mtData.description.replace(/§[0-9a-fk-or]/gi, '').trim();
+                }
+              }
+            } catch {
+              // Silently handle without breaking UI
+            }
+          }
+
           setJavaStatus({
             online: isOnline,
             host: javaHost,
-            port: data?.port || javaPort,
-            playersOnline: isOnline ? Number(data?.players?.online ?? 0) : 0,
-            playersMax: isOnline ? Number(data?.players?.max ?? 100) : 0,
-            version: data?.version?.name_clean || siteSettings.minecraftVersion,
-            motdClean,
+            port: detectedPort,
+            playersOnline,
+            playersMax,
+            version,
+            motdClean: isOnline
+              ? motdClean
+              : 'Server is currently offline or in free-hosting standby mode.',
             lastCheckedAt: checkedAt,
           });
         } catch (err) {
@@ -787,23 +824,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const bedrockPromise = (async () => {
         try {
-          const data = await fetchWithTimeout(
-            `https://api.mcstatus.io/v2/status/bedrock/${encodeURIComponent(bedrockAddress)}`
-          );
-          const isOnline = Boolean(data?.online);
-          const motdClean =
-            data?.motd?.clean?.join(' ')?.trim() ||
-            (isOnline
-              ? 'PRO PLAYERS — Bedrock Crossplay Online'
-              : 'Bedrock gateway is currently offline or in free-hosting standby mode.');
+          let isOnline = false;
+          let playersOnline = 0;
+          let playersMax = 100;
+          let version = siteSettings.minecraftVersion;
+          let motdClean = 'PRO PLAYERS — Bedrock Crossplay Online';
+          let detectedPort = bedrockPort;
+
+          try {
+            const data = await fetchWithTimeout(
+              `https://api.mcsrvstat.us/bedrock/2/${encodeURIComponent(bedrockAddress)}`
+            );
+            if (data && typeof data.online === 'boolean') {
+              isOnline = Boolean(data.online);
+              if (data.port) detectedPort = Number(data.port) || bedrockPort;
+              if (isOnline) {
+                playersOnline = Number(data.players?.online ?? 0);
+                playersMax = Number(data.players?.max ?? 100);
+                if (data.version) version = String(data.version);
+                if (Array.isArray(data.motd?.clean) && data.motd.clean.length > 0) {
+                  motdClean = data.motd.clean.join(' ').trim();
+                }
+              }
+            }
+          } catch {
+            // Silently handle bedrock query failure
+          }
+
           setBedrockStatus({
             online: isOnline,
             host: bedrockHost,
-            port: data?.port || bedrockPort,
-            playersOnline: isOnline ? Number(data?.players?.online ?? 0) : 0,
-            playersMax: isOnline ? Number(data?.players?.max ?? 100) : 0,
-            version: data?.version?.name || siteSettings.minecraftVersion,
-            motdClean,
+            port: detectedPort,
+            playersOnline,
+            playersMax,
+            version,
+            motdClean: isOnline
+              ? motdClean
+              : 'Bedrock gateway is currently offline or in free-hosting standby mode.',
             lastCheckedAt: checkedAt,
           });
         } catch (err) {
