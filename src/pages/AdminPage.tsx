@@ -78,6 +78,7 @@ import { GlobalAnnouncementType, SiteSettings, UserProfile } from '../types/cms'
 import { ResilientImage } from '../components/ResilientImage';
 import { MinecraftAvatar } from '../components/MinecraftAvatar';
 import { UnusedImageCleanupSection } from '../components/UnusedImageCleanupSection';
+import { scrollToTop } from '../components/ScrollToTop';
 
 type AdminSidebarSection =
   | 'dashboard'
@@ -621,6 +622,11 @@ export const AdminPage: React.FC = () => {
   useEffect(() => {
     setSettingsForm(siteSettings);
   }, [siteSettings]);
+
+  // Smoothly scroll window to top whenever active section or collection view changes
+  useEffect(() => {
+    scrollToTop(true);
+  }, [activeSection, activeCollection]);
 
   // Direct live Firestore collection loader (materializes starter items into Firestore once if never customized)
   const loadAdminCollection = useCallback(async (colKey: CmsCollectionKey) => {

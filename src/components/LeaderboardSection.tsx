@@ -22,6 +22,7 @@ import {
 import { CanonicalLeaderboardCategory, LeaderboardEntryItem } from '../types/cms';
 import { normalizeLeaderboardCategory } from '../data/seedData';
 import { MinecraftAvatar } from './MinecraftAvatar';
+import { scrollToTop } from './ScrollToTop';
 
 export type LeaderboardFilter = 'All' | CanonicalLeaderboardCategory;
 
@@ -247,7 +248,10 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
             type="button"
             role="tab"
             aria-selected={activeFilter === 'All'}
-            onClick={() => setActiveFilter('All')}
+            onClick={() => {
+              setActiveFilter('All');
+              scrollToTop(true);
+            }}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeFilter === 'All'
                 ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-400/20'
@@ -270,7 +274,10 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
-                onClick={() => setActiveFilter(cat)}
+                onClick={() => {
+                  setActiveFilter(cat);
+                  scrollToTop(true);
+                }}
                 className={`px-3 py-2 rounded-xl text-xs transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                   isSelected ? style.tabActiveStyle : style.tabInactiveStyle
                 }`}

@@ -22,6 +22,7 @@ import { CommandCategory } from '../types/cms';
 import { normalizeRuleCategory } from '../data/seedData';
 import { DynamicIcon } from '../components/DynamicIcon';
 import { ResilientImage } from '../components/ResilientImage';
+import { scrollToTop } from '../components/ScrollToTop';
 
 type StructuredRuleCategory =
   | 'General Rules'
@@ -364,7 +365,10 @@ export const InformationPage: React.FC = () => {
               type="button"
               role="tab"
               aria-selected={selectedCommandCategory === cat}
-              onClick={() => setSelectedCommandCategory(cat)}
+              onClick={() => {
+                setSelectedCommandCategory(cat);
+                scrollToTop(true);
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 selectedCommandCategory === cat
                   ? 'bg-emerald-400 text-slate-950'
@@ -481,7 +485,10 @@ export const InformationPage: React.FC = () => {
             type="button"
             role="tab"
             aria-selected={selectedRuleCategory === 'All'}
-            onClick={() => setSelectedRuleCategory('All')}
+            onClick={() => {
+              setSelectedRuleCategory('All');
+              scrollToTop(true);
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               selectedRuleCategory === 'All'
                 ? 'bg-emerald-400 text-slate-950'
@@ -500,7 +507,10 @@ export const InformationPage: React.FC = () => {
                 type="button"
                 role="tab"
                 aria-selected={selectedRuleCategory === cfg.category}
-                onClick={() => setSelectedRuleCategory(cfg.category)}
+                onClick={() => {
+                  setSelectedRuleCategory(cfg.category);
+                  scrollToTop(true);
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   selectedRuleCategory === cfg.category
                     ? 'bg-emerald-400 text-slate-950'

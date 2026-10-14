@@ -6,6 +6,7 @@
 import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { ScrollToTop } from './components/ScrollToTop';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
 import { InformationPage } from './pages/InformationPage';
@@ -19,6 +20,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AppProvider>
         <Layout>
           <Routes>

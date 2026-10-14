@@ -23,6 +23,7 @@ import { useApp } from '../context/AppContext';
 import { ResilientImage } from './ResilientImage';
 import { MinecraftAvatar } from './MinecraftAvatar';
 import { normalizeAssetUrl, FALLBACK_BACKGROUND_URL } from '../lib/assetHelper';
+import { scrollToTop } from './ScrollToTop';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, userProfile, isAdmin, siteSettings, news } = useApp();
@@ -168,7 +169,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {/* Zone 1: Brand Lockup (Proportional Background-Removed Logo + PRO PLAYERS Text, No Border/Container/Glow) */}
           <Link
             to="/"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              scrollToTop(true);
+            }}
             className="flex items-center gap-3.5 whitespace-nowrap shrink-0 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-lg"
           >
             <ResilientImage
@@ -191,6 +195,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
+                onClick={() => scrollToTop(true)}
                 className={({ isActive }) =>
                   `whitespace-nowrap shrink-0 py-1 transition-colors border-b-2 ${
                     isActive
@@ -205,6 +210,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {isAdmin && (
               <NavLink
                 to="/admin"
+                onClick={() => scrollToTop(true)}
                 className={({ isActive }) =>
                   `whitespace-nowrap shrink-0 py-1 transition-colors border-b-2 flex items-center gap-1.5 ${
                     isActive
@@ -224,6 +230,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {user ? (
               <Link
                 to="/profile"
+                onClick={() => scrollToTop(true)}
                 className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 border ${
                   location.pathname === '/profile'
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
@@ -241,6 +248,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             ) : (
               <Link
                 to="/login"
+                onClick={() => scrollToTop(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition-colors whitespace-nowrap shrink-0"
               >
                 <UserIcon className="w-3.5 h-3.5" />
@@ -269,7 +277,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToTop(true);
+                }}
                 className={({ isActive }) =>
                   `block px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
@@ -285,7 +296,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {isAdmin && (
               <NavLink
                 to="/admin"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  scrollToTop(true);
+                }}
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
@@ -304,7 +318,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <>
                   <Link
                     to="/profile"
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      scrollToTop(true);
+                    }}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-800 text-white hover:bg-slate-700"
                   >
                     <UserIcon className="w-4 h-4 text-emerald-400" />
@@ -325,14 +342,20 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <div className="grid grid-cols-2 gap-2">
                   <Link
                     to="/login"
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      scrollToTop(true);
+                    }}
                     className="text-center px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700"
                   >
                     Login
                   </Link>
                   <Link
                     to="/register"
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      scrollToTop(true);
+                    }}
                     className="text-center px-4 py-2.5 rounded-lg text-sm font-bold bg-emerald-400 text-slate-950 hover:bg-emerald-300"
                   >
                     Register
@@ -487,22 +510,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </h2>
               <ul className="space-y-2 text-sm text-slate-300">
                 <li>
-                  <Link to="/" className="hover:text-emerald-400 transition-colors">
+                  <Link to="/" onClick={() => scrollToTop(true)} className="hover:text-emerald-400 transition-colors">
                     Home &amp; Live Status
                   </Link>
                 </li>
                 <li>
-                  <Link to="/information" className="hover:text-emerald-400 transition-colors">
+                  <Link to="/information" onClick={() => scrollToTop(true)} className="hover:text-emerald-400 transition-colors">
                     Information, Commands &amp; Rules
                   </Link>
                 </li>
                 <li>
-                  <Link to="/community" className="hover:text-emerald-400 transition-colors">
+                  <Link to="/community" onClick={() => scrollToTop(true)} className="hover:text-emerald-400 transition-colors">
                     Community, Leaderboards &amp; Events
                   </Link>
                 </li>
                 <li>
-                  <Link to="/links" className="hover:text-emerald-400 transition-colors">
+                  <Link to="/links" onClick={() => scrollToTop(true)} className="hover:text-emerald-400 transition-colors">
                     Official Social Links
                   </Link>
                 </li>
@@ -549,16 +572,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <p>© {new Date().getFullYear()} PRO PLAYERS Community. All rights reserved.</p>
             <div className="flex items-center gap-4">
               {user ? (
-                <Link to="/profile" className="hover:text-white transition-colors">
+                <Link to="/profile" onClick={() => scrollToTop(true)} className="hover:text-white transition-colors">
                   My Profile
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="hover:text-white transition-colors">
+                  <Link to="/login" onClick={() => scrollToTop(true)} className="hover:text-white transition-colors">
                     Login
                   </Link>
                   <span>·</span>
-                  <Link to="/register" className="hover:text-white transition-colors">
+                  <Link to="/register" onClick={() => scrollToTop(true)} className="hover:text-white transition-colors">
                     Register
                   </Link>
                 </>
@@ -566,7 +589,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               {isAdmin && (
                 <>
                   <span>·</span>
-                  <Link to="/admin" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                  <Link to="/admin" onClick={() => scrollToTop(true)} className="text-emerald-400 hover:text-emerald-300 transition-colors">
                     Admin Dashboard
                   </Link>
                 </>
