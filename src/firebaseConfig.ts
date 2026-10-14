@@ -1,5 +1,5 @@
 // Official PRO PLAYERS Firebase Configuration
-const env = import.meta.env;
+const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : ({} as Record<string, string | undefined>);
 
 function resolveConfigValue(envVal: string | undefined, fallbackVal: string): string {
   if (envVal && envVal.trim() !== '' && !envVal.startsWith('YOUR_')) {

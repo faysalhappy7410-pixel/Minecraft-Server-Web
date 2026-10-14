@@ -27,10 +27,10 @@ service firebase.storage {
         request.resource.contentType.matches('image/.*');
     }
 
-    // 1. Public CMS Assets (Logo, Theme Reference, Gallery, News, Events, Staff)
+    // 1. Public CMS Assets (Logo, Theme Reference, Gallery, News, Events, Staff, Warps, Leaderboards, Challengers)
     // Public visitors can read CMS images intentionally published on the site.
     // Only verified admins can upload, overwrite, or delete CMS assets.
-    match /cms/{category}/{fileName} {
+    match /cms/{allPaths=**} {
       allow read: if true;
       allow write: if isAdmin() && isValidImageUpload();
       allow delete: if isAdmin();
@@ -43,9 +43,15 @@ service firebase.storage {
       allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
-    // 3. Default Deny Catch-All
+    match /users/{allPaths=**} {
+      allow read: if true;
+      allow write, delete: if isAdmin();
+    }
+
+    // 3. Admin Storage Management & Cleanup across all paths
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, delete: if isAdmin();
+      allow write: if false;
     }
   }
 }

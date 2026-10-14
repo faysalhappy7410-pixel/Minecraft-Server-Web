@@ -77,6 +77,7 @@ import {
 import { GlobalAnnouncementType, SiteSettings, UserProfile } from '../types/cms';
 import { ResilientImage } from '../components/ResilientImage';
 import { MinecraftAvatar } from '../components/MinecraftAvatar';
+import { UnusedImageCleanupSection } from '../components/UnusedImageCleanupSection';
 
 type AdminSidebarSection =
   | 'dashboard'
@@ -87,6 +88,7 @@ type AdminSidebarSection =
   | 'announcements_manager'
   | 'leaderboards_manager'
   | 'users'
+  | 'storage_cleanup'
   | 'site_settings'
   | 'content'
   | 'community'
@@ -1551,6 +1553,27 @@ export const AdminPage: React.FC = () => {
                 </span>
               </button>
 
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('storage_cleanup');
+                  setIsFormOpen(false);
+                }}
+                className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                  activeSection === 'storage_cleanup'
+                    ? 'bg-emerald-400 text-slate-950'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <Trash2 className="w-4 h-4 text-rose-400" />
+                  <span>Unused Image Cleanup</span>
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                  Storage
+                </span>
+              </button>
+
               <div className="pt-2 pb-1 px-2 text-[10px] font-mono uppercase tracking-wider text-slate-500">
                 Website Configuration
               </div>
@@ -1877,6 +1900,25 @@ export const AdminPage: React.FC = () => {
                     <p className="text-xs text-slate-400">
                       View all registered player accounts, assign Leaderboard rankings, or manage
                       admin roles.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection('storage_cleanup')}
+                    className="p-5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-rose-500/45 text-left space-y-2 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <Trash2 className="w-5 h-5 text-rose-400" />
+                      <span className="text-[11px] font-mono text-rose-400">
+                        Scan &amp; Purge Storage
+                      </span>
+                    </div>
+                    <div className="font-display font-bold text-white text-base">
+                      Unused Image Storage Cleanup
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Scan Firestore (Leaderboard, Challengers, Warps, Users), cross-check Firebase Storage buckets, identify orphan files, and safely purge unused images.
                     </p>
                   </button>
                 </div>
@@ -3136,6 +3178,14 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {/* SECTION 7: UNUSED IMAGE CLEANUP & STORAGE OPTIMIZER */}
+          {activeSection === 'storage_cleanup' && (
+            <UnusedImageCleanupSection
+              isAdmin={isAdmin}
+              onNotification={(msg, type) => setStatusBanner({ message: msg, type })}
+            />
           )}
         </div>
       </div>
