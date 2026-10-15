@@ -166,6 +166,7 @@ export type CanonicalLeaderboardCategory =
   | 'Challengers'
   | 'Mini-Game Champions'
   | 'Event Winners'
+  | 'Most Play Time'
   | 'Community Beta';
 
 export type LeaderboardCategory =
@@ -174,6 +175,9 @@ export type LeaderboardCategory =
   | 'Master Builder'
   | 'Minigame Champion'
   | 'Play Time Legend'
+  | 'Most Play Time'
+  | 'Play Time'
+  | 'Playtime'
   | 'Community Helper'
   | 'Event Winner';
 

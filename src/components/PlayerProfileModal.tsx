@@ -176,7 +176,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ entry, o
             ? 'High-tempo arcade speedrunner and parkour tournament champion.'
             : canonicalCat === 'Event Winners'
               ? 'Trophy holder and gold medalist in official seasonal server events.'
-              : 'Community beta auditor and network testing pioneer on the PRO PLAYERS crossplay network.');
+              : canonicalCat === 'Most Play Time'
+                ? 'Legendary server veteran with extraordinary cumulative playtime, enduring survival milestones, and realm exploration.'
+                : 'Community beta auditor and network testing pioneer on the PRO PLAYERS crossplay network.');
 
   const CategoryBadgeIcon = catStyle.badgeIcon;
 
@@ -200,7 +202,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ entry, o
                   ? 'bg-gradient-to-b from-[#181608] via-[#0f1118] to-[#070b10] border-yellow-500/50 shadow-yellow-500/15'
                   : canonicalCat === 'Event Winners'
                     ? 'bg-gradient-to-b from-[#181308] via-[#101018] to-[#070b10] border-amber-500/50 shadow-amber-500/15'
-                    : 'bg-gradient-to-b from-[#081816] via-[#0a1218] to-[#070b10] border-teal-500/50 shadow-teal-500/15'
+                    : canonicalCat === 'Most Play Time'
+                      ? 'bg-gradient-to-b from-[#120d24] via-[#0d101a] to-[#070b10] border-indigo-500/50 shadow-indigo-500/20'
+                      : 'bg-gradient-to-b from-[#081816] via-[#0a1218] to-[#070b10] border-teal-500/50 shadow-teal-500/15'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -217,7 +221,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ entry, o
                     ? 'bg-gradient-to-r from-yellow-600/30 via-amber-600/20 to-slate-900 border-yellow-500/35'
                     : canonicalCat === 'Event Winners'
                       ? 'bg-gradient-to-r from-amber-600/30 via-orange-600/20 to-slate-900 border-amber-500/35'
-                      : 'bg-gradient-to-r from-teal-600/30 via-emerald-600/20 to-slate-900 border-teal-500/35'
+                      : canonicalCat === 'Most Play Time'
+                        ? 'bg-gradient-to-r from-indigo-600/35 via-violet-600/25 to-slate-900 border-indigo-500/35'
+                        : 'bg-gradient-to-r from-teal-600/30 via-emerald-600/20 to-slate-900 border-teal-500/35'
           }`}
         >
           {/* Subtle Background Glow Accent */}
@@ -229,7 +235,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ entry, o
                   ? 'bg-purple-500/30'
                   : canonicalCat === 'Builders'
                     ? 'bg-cyan-500/20'
-                    : 'bg-amber-500/20'
+                    : canonicalCat === 'Most Play Time'
+                      ? 'bg-indigo-500/25'
+                      : 'bg-amber-500/20'
             }`}
           />
 

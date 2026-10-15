@@ -285,9 +285,12 @@ service cloud.firestore {
         data.category == 'Minigame Champion' ||
         data.category == 'Event Winners' ||
         data.category == 'Event Winner' ||
+        data.category == 'Most Play Time' ||
+        data.category == 'Play Time' ||
+        data.category == 'Playtime' ||
+        data.category == 'Play Time Legend' ||
         data.category == 'Community Beta' ||
-        data.category == 'Community Helper' ||
-        data.category == 'Play Time Legend'
+        data.category == 'Community Helper'
       ) &&
       data.rank is number && data.rank >= 1 && data.rank <= 100 &&
       data.minecraftUsername is string && data.minecraftUsername.size() >= 3 && data.minecraftUsername.size() <= 16 &&

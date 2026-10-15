@@ -373,6 +373,7 @@ const COLLECTION_SCHEMAS: Record<
           'Challengers',
           'Mini-Game Champions',
           'Event Winners',
+          'Most Play Time',
           'Community Beta',
           'PvP Master',
           'Master Builder',
@@ -2962,7 +2963,9 @@ export const AdminPage: React.FC = () => {
                                               ? 'bg-yellow-500/15 border border-yellow-500/40 text-yellow-300'
                                               : item.category === 'Event Winners' || item.category === 'Event Winner'
                                                 ? 'bg-amber-500/15 border border-amber-500/40 text-amber-300'
-                                                : 'bg-teal-500/15 border border-teal-500/40 text-teal-300'
+                                                : item.category === 'Most Play Time' || item.category === 'Play Time Legend' || item.category === 'Play Time'
+                                                  ? 'bg-indigo-500/15 border border-indigo-500/40 text-indigo-300'
+                                                  : 'bg-teal-500/15 border border-teal-500/40 text-teal-300'
                                     }`}
                                   >
                                     {String(item.category)}

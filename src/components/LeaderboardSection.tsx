@@ -22,7 +22,6 @@ import {
 import { CanonicalLeaderboardCategory, LeaderboardEntryItem } from '../types/cms';
 import { normalizeLeaderboardCategory } from '../data/seedData';
 import { MinecraftAvatar } from './MinecraftAvatar';
-import { scrollToTop } from './ScrollToTop';
 
 export type LeaderboardFilter = 'All' | CanonicalLeaderboardCategory;
 
@@ -54,6 +53,7 @@ interface CategoryStyleConfig {
   blueprintGrid?: boolean;
   fieryGlow?: boolean;
   neonPurpleGold?: boolean;
+  chronoTimeAura?: boolean;
 }
 
 export const CATEGORY_STYLES: Record<CanonicalLeaderboardCategory, CategoryStyleConfig> = {
@@ -168,21 +168,42 @@ export const CATEGORY_STYLES: Record<CanonicalLeaderboardCategory, CategoryStyle
     cardGlow: 'from-teal-500/20 via-emerald-500/10 to-transparent',
     accentText: 'text-teal-300',
   },
+  'Most Play Time': {
+    id: 'Most Play Time',
+    name: 'Most Play Time',
+    shortLabel: 'Most Play Time',
+    vibeTag: 'Endurance & Dedication Vanguard',
+    description: 'Legendary server veterans with the highest cumulative hours logged, tireless survivalists, and realm pioneers.',
+    icon: Clock,
+    primaryColor: '#8b5cf6',
+    badgeStyle: 'bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white font-bold shadow-md shadow-indigo-500/25 border border-indigo-400/50',
+    badgeIcon: Clock,
+    badgeLabel: 'PLAY TIME LEGEND',
+    tabActiveStyle: 'bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 text-white font-bold shadow-lg shadow-indigo-600/25',
+    tabInactiveStyle: 'text-indigo-300 hover:text-white bg-indigo-950/30 hover:bg-indigo-900/40 border border-indigo-500/30',
+    cardBorder: 'border-indigo-500/45 hover:border-violet-300 shadow-xl shadow-indigo-500/10',
+    cardBg: 'bg-gradient-to-b from-indigo-950/25 via-slate-900/90 to-slate-900/95',
+    cardGlow: 'from-violet-600/20 via-indigo-600/15 to-transparent',
+    accentText: 'text-indigo-300',
+    chronoTimeAura: true,
+  },
 };
 
-// Explicit order requested:
+// Hierarchy of Leaderboard Categories:
 // 1. PvP Masters
 // 2. Builders
-// 3. Challengers (in the middle!)
+// 3. Challengers
 // 4. Mini-Game Champions
 // 5. Event Winners
-// 6. Community Beta
+// 6. Most Play Time
+// 7. Community Beta
 export const ORDERED_CATEGORIES: CanonicalLeaderboardCategory[] = [
   'PvP Masters',
   'Builders',
   'Challengers',
   'Mini-Game Champions',
   'Event Winners',
+  'Most Play Time',
   'Community Beta',
 ];
 
@@ -202,6 +223,7 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
     'Challengers': [],
     'Mini-Game Champions': [],
     'Event Winners': [],
+    'Most Play Time': [],
     'Community Beta': [],
   };
 
@@ -248,10 +270,7 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
             type="button"
             role="tab"
             aria-selected={activeFilter === 'All'}
-            onClick={() => {
-              setActiveFilter('All');
-              scrollToTop(true);
-            }}
+            onClick={() => setActiveFilter('All')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
               activeFilter === 'All'
                 ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-400/20'
@@ -274,10 +293,7 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
-                onClick={() => {
-                  setActiveFilter(cat);
-                  scrollToTop(true);
-                }}
+                onClick={() => setActiveFilter(cat)}
                 className={`px-3 py-2 rounded-xl text-xs transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                   isSelected ? style.tabActiveStyle : style.tabInactiveStyle
                 }`}
@@ -293,8 +309,11 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
         </div>
       </div>
 
-      {/* Render Stacked Categories (or Single Category) */}
-      <div className="space-y-16">
+      {/* Render Stacked Categories (or Single Category) with Smooth Fade-In and Slide-Up Transition */}
+      <div
+        key={activeFilter}
+        className="space-y-16 animate-category-enter transition-all duration-300 ease-out"
+      >
         {categoriesToRender.map((cat) => {
           const style = CATEGORY_STYLES[cat];
           const items = groupedEntries[cat];
@@ -335,6 +354,11 @@ export const LeaderboardSection: React.FC<LeaderboardViewProps> = ({
                 {/* Golden/Neon-Purple aura for Challengers */}
                 {style.neonPurpleGold && (
                   <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+                )}
+
+                {/* Glowing Indigo/Violet Chrono Aura for Most Play Time */}
+                {style.chronoTimeAura && (
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
                 )}
 
                 <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">

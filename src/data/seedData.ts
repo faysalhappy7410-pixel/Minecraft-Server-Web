@@ -673,7 +673,17 @@ export function normalizeLeaderboardCategory(cat?: string): CanonicalLeaderboard
   if (trimmed === 'Builders' || trimmed === 'Master Builder') return 'Builders';
   if (trimmed === 'Mini-Game Champions' || trimmed === 'Minigame Champion') return 'Mini-Game Champions';
   if (trimmed === 'Event Winners' || trimmed === 'Event Winner') return 'Event Winners';
-  if (trimmed === 'Community Beta' || trimmed === 'Community Helper' || trimmed === 'Play Time Legend') return 'Community Beta';
+  if (
+    trimmed === 'Most Play Time' ||
+    trimmed === 'Play Time' ||
+    trimmed === 'Playtime' ||
+    trimmed === 'Play Time Legend' ||
+    trimmed.toLowerCase().includes('play time') ||
+    trimmed.toLowerCase().includes('playtime')
+  ) {
+    return 'Most Play Time';
+  }
+  if (trimmed === 'Community Beta' || trimmed === 'Community Helper') return 'Community Beta';
   return 'PvP Masters';
 }
 
@@ -683,6 +693,7 @@ export const CANONICAL_LEADERBOARD_CATEGORIES: CanonicalLeaderboardCategory[] = 
   'Challengers',
   'Mini-Game Champions',
   'Event Winners',
+  'Most Play Time',
   'Community Beta',
 ];
 
@@ -839,7 +850,49 @@ export const SEED_LEADERBOARDS: LeaderboardEntryItem[] = [
     updatedAt: NOW_ISO,
   },
 
-  // 6. Community Beta
+  // 6. Most Play Time (Hours & Dedication Vanguard)
+  {
+    id: 'lb_playtime_1',
+    category: 'Most Play Time',
+    rank: 1,
+    minecraftUsername: 'ChronoSage_',
+    statLabel: 'Server Play Time',
+    statValue: '1,842 Hours · 76.8 Days',
+    challengeTitle: 'Realm Pioneer & Veteran Survivor',
+    challengeDescription: 'Logged over 1,840 active gameplay hours exploring survival realms, constructing community transit networks, and assisting newcomers.',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+  {
+    id: 'lb_playtime_2',
+    category: 'Most Play Time',
+    rank: 2,
+    minecraftUsername: 'IronMiner_42',
+    statLabel: 'Server Play Time',
+    statValue: '1,510 Hours · 62.9 Days',
+    challengeTitle: 'Master Deepslate Excavator',
+    challengeDescription: 'Deepslate miner with 1,500+ hours underground, unearthing ancient cities and crafting subterranean highway tunnels.',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+  {
+    id: 'lb_playtime_3',
+    category: 'Most Play Time',
+    rank: 3,
+    minecraftUsername: 'EternalWanderer',
+    statLabel: 'Server Play Time',
+    statValue: '1,280 Hours · 53.3 Days',
+    challengeTitle: 'Endless Horizon Cartographer',
+    challengeDescription: 'Explored and mapped over 100,000 blocks across the Overworld and Nether frontier in more than 1,280 logged hours.',
+    published: true,
+    createdAt: NOW_ISO,
+    updatedAt: NOW_ISO,
+  },
+
+  // 7. Community Beta
   {
     id: 'lb_beta_1',
     category: 'Community Beta',

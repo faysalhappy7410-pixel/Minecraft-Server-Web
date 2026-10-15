@@ -27,7 +27,6 @@ import {
   StorageImageItem,
   CleanupScanReport,
 } from '../lib/storageCleanup';
-import { scrollToTop } from './ScrollToTop';
 
 interface UnusedImageCleanupSectionProps {
   isAdmin: boolean;
@@ -404,10 +403,7 @@ export const UnusedImageCleanupSection: React.FC<UnusedImageCleanupSectionProps>
           <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
             <button
               type="button"
-              onClick={() => {
-                setActiveTab('orphans');
-                scrollToTop(true);
-              }}
+              onClick={() => setActiveTab('orphans')}
               className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 cursor-pointer ${
                 activeTab === 'orphans'
                   ? 'bg-rose-500 text-white shadow-sm'
@@ -427,10 +423,7 @@ export const UnusedImageCleanupSection: React.FC<UnusedImageCleanupSectionProps>
 
             <button
               type="button"
-              onClick={() => {
-                setActiveTab('used');
-                scrollToTop(true);
-              }}
+              onClick={() => setActiveTab('used')}
               className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 cursor-pointer ${
                 activeTab === 'used'
                   ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
@@ -450,10 +443,7 @@ export const UnusedImageCleanupSection: React.FC<UnusedImageCleanupSectionProps>
 
             <button
               type="button"
-              onClick={() => {
-                setActiveTab('breakdown');
-                scrollToTop(true);
-              }}
+              onClick={() => setActiveTab('breakdown')}
               className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 cursor-pointer ${
                 activeTab === 'breakdown'
                   ? 'bg-indigo-600 text-white shadow-sm'
